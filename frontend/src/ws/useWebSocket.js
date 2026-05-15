@@ -7,7 +7,11 @@ export function connectWS({ setBars, updateBar }) {
 
   socket.onopen = () => {
     console.log('[WS] Connecté au backend')
-    socket.send(JSON.stringify({ type: 'get_bars' }))
+    setTimeout(() => {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'get_bars' }))
+      }
+    }, 100)
   }
 
   socket.onmessage = (event) => {
