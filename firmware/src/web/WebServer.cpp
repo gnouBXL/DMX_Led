@@ -28,47 +28,34 @@ void WebServer::_setupRoutes() {
     });
 
     _server.on("/api/status", HTTP_GET,
-        [this](AsyncWebServerRequest* req) {
-            _handleGetStatus(req);
-        });
+        [this](AsyncWebServerRequest* req) { _handleGetStatus(req); });
 
     _server.on("/api/config", HTTP_GET,
-        [this](AsyncWebServerRequest* req) {
-            _handleGetConfig(req);
-        });
+        [this](AsyncWebServerRequest* req) { _handleGetConfig(req); });
 
-    _server.addHandler(new AsyncCallbackJsonWebHandler(
-        "/api/config",
+    _server.addHandler(new AsyncCallbackJsonWebHandler("/api/config",
         [this](AsyncWebServerRequest* req, JsonVariant& json) {
-            _handlePostConfig(req, json);
-        }));
+            _handlePostConfig(req, json); }));
 
-    _server.addHandler(new AsyncCallbackJsonWebHandler(
-        "/api/wifi",
+    _server.addHandler(new AsyncCallbackJsonWebHandler("/api/wifi",
         [this](AsyncWebServerRequest* req, JsonVariant& json) {
-            _handlePostWifi(req, json);
-        }));
+            _handlePostWifi(req, json); }));
 
-    _server.addHandler(new AsyncCallbackJsonWebHandler(
-        "/api/test",
+    _server.addHandler(new AsyncCallbackJsonWebHandler("/api/test",
         [this](AsyncWebServerRequest* req, JsonVariant& json) {
-            _handlePostTest(req, json);
-        }));
+            _handlePostTest(req, json); }));
 
-    _server.addHandler(new AsyncCallbackJsonWebHandler(
-        "/api/effect",
+    _server.addHandler(new AsyncCallbackJsonWebHandler("/api/effect",
         [this](AsyncWebServerRequest* req, JsonVariant& json) {
-            _handlePostEffect(req, json);
-        }));
+            _handlePostEffect(req, json); }));
 
     _server.on("/api/reboot", HTTP_POST,
-        [this](AsyncWebServerRequest* req) {
-            _handleReboot(req);
-        });
+        [this](AsyncWebServerRequest* req) { _handleReboot(req); });
 
     _server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
 }
 
+// ─── GET /api/status ──────────────────────────────────────────────────────────
 void WebServer::_handleGetStatus(AsyncWebServerRequest* req) {
     JsonDocument doc;
     doc["name"]      = _config->data.deviceName;
@@ -83,35 +70,48 @@ void WebServer::_handleGetStatus(AsyncWebServerRequest* req) {
     req->send(200, "application/json", out);
 }
 
+// ─── GET /api/config ──────────────────────────────────────────────────────────
 void WebServer::_handleGetConfig(AsyncWebServerRequest* req) {
     JsonDocument doc;
-    doc["deviceName"]      = _config->data.deviceName;
-    doc["ledCount"]        = _config->data.ledCount;
-    doc["dmxUniverse"]     = _config->data.dmxUniverse;
-    doc["dmxStartChannel"] = _config->data.dmxStartChannel;
-    doc["dmxMode"]         = _config->data.dmxMode;
-    doc["dmxGroupSize"]    = _config->data.dmxGroupSize;
-    doc["brightness"]      = _config->data.brightness;
-    doc["fpsMax"]          = _config->data.fpsMax;
-    doc["timeoutMs"]       = _config->data.timeoutMs;
+    doc["deviceName"]        = _config->data.deviceName;
+    doc["ledCount"]          = _config->data.ledCount;
+    doc["dmxUniverse"]       = _config->data.dmxUniverse;
+    doc["dmxStartChannel"]   = _config->data.dmxStartChannel;
+    doc["dmxMode"]           = _config->data.dmxMode;
+    doc["dmxGroupSize"]      = _config->data.dmxGroupSize;
+    doc["brightness"]        = _config->data.brightness;
+    doc["fpsMax"]            = _config->data.fpsMax;
+    doc["timeoutMs"]         = _config->data.timeoutMs;
 
+    // Multi-univers
+    doc["universe2"]         = _config->data.universe2;
+    doc["universe2StartCh"]  = _config->data.universe2StartCh;
+    doc["universe2LedStart"] = _config->data.universe2LedStart;
+    doc["universeMode"]      = _config->data.universeMode;
+
+    // Calculs automatiques
     uint16_t channels = 0;
     switch (_config->data.dmxMode) {
         case 0: channels = _config->data.ledCount * 3; break;
-        case 1: channels = (_config->data.ledCount / _config->data.dmxGroupSize) * 3; break;
+        case 1: channels = (_config->data.ledCount /
+                            _config->data.dmxGroupSize) * 3; break;
         case 2: channels = 3; break;
     }
-    doc["dmxChannelsUsed"] = channels;
-    doc["dmxLastChannel"]  = _config->data.dmxStartChannel + channels - 1;
+    doc["dmxChannelsUsed"]   = channels;
+    doc["dmxLastChannel"]    = _config->data.dmxStartChannel + channels - 1;
+    doc["universe2LedStartCalc"] = _config->calcUniverse2LedStart();
+    doc["universe1Skip"]     = _config->calcUniverse1Skip();
 
     String out;
     serializeJson(doc, out);
     req->send(200, "application/json", out);
 }
 
+// ─── POST /api/config ─────────────────────────────────────────────────────────
 void WebServer::_handlePostConfig(AsyncWebServerRequest* req, JsonVariant& json) {
     if (json["deviceName"].is<const char*>())
-        strlcpy(_config->data.deviceName, json["deviceName"], sizeof(_config->data.deviceName));
+        strlcpy(_config->data.deviceName,
+                json["deviceName"], sizeof(_config->data.deviceName));
     if (json["ledCount"].is<int>())
         _config->data.ledCount = json["ledCount"];
     if (json["dmxUniverse"].is<int>())
@@ -131,24 +131,38 @@ void WebServer::_handlePostConfig(AsyncWebServerRequest* req, JsonVariant& json)
     if (json["timeoutMs"].is<int>())
         _config->data.timeoutMs = json["timeoutMs"];
 
+    // Multi-univers
+    if (json["universe2"].is<int>())
+        _config->data.universe2 = json["universe2"];
+    if (json["universe2StartCh"].is<int>())
+        _config->data.universe2StartCh = json["universe2StartCh"];
+    if (json["universe2LedStart"].is<int>())
+        _config->data.universe2LedStart = json["universe2LedStart"];
+    if (json["universeMode"].is<int>())
+        _config->data.universeMode = json["universeMode"];
+
     _config->save();
     req->send(200, "application/json", "{\"ok\":true}");
 }
 
+// ─── POST /api/wifi ───────────────────────────────────────────────────────────
 void WebServer::_handlePostWifi(AsyncWebServerRequest* req, JsonVariant& json) {
     if (!json["ssid"].is<const char*>()) {
         req->send(400, "application/json", "{\"error\":\"ssid requis\"}");
         return;
     }
-    strlcpy(_config->data.wifiSSID, json["ssid"], sizeof(_config->data.wifiSSID));
+    strlcpy(_config->data.wifiSSID,
+            json["ssid"], sizeof(_config->data.wifiSSID));
     if (json["password"].is<const char*>())
-        strlcpy(_config->data.wifiPassword, json["password"], sizeof(_config->data.wifiPassword));
+        strlcpy(_config->data.wifiPassword,
+                json["password"], sizeof(_config->data.wifiPassword));
     _config->save();
     req->send(200, "application/json", "{\"ok\":true,\"reboot\":true}");
     delay(1000);
     ESP.restart();
 }
 
+// ─── POST /api/test ───────────────────────────────────────────────────────────
 void WebServer::_handlePostTest(AsyncWebServerRequest* req, JsonVariant& json) {
     String mode = json["mode"] | "color";
     if (mode == "color") {
@@ -166,6 +180,7 @@ void WebServer::_handlePostTest(AsyncWebServerRequest* req, JsonVariant& json) {
     req->send(200, "application/json", "{\"ok\":true}");
 }
 
+// ─── POST /api/effect ─────────────────────────────────────────────────────────
 void WebServer::_handlePostEffect(AsyncWebServerRequest* req, JsonVariant& json) {
     int type = json["type"] | 1;
     _effects->setEffect((EffectType)type);
@@ -176,6 +191,7 @@ void WebServer::_handlePostEffect(AsyncWebServerRequest* req, JsonVariant& json)
     req->send(200, "application/json", "{\"ok\":true}");
 }
 
+// ─── POST /api/reboot ─────────────────────────────────────────────────────────
 void WebServer::_handleReboot(AsyncWebServerRequest* req) {
     req->send(200, "application/json", "{\"ok\":true}");
     delay(500);

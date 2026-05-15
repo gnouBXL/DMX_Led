@@ -24,17 +24,43 @@
   .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
   .status-row { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px solid #222; }
   .status-row:last-child { border-bottom: none; }
-  .status-val { color: #aaa; }
   .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; }
   .badge-green { background: #14532d; color: #86efac; }
   .badge-yellow { background: #713f12; color: #fde68a; }
   .badge-red { background: #7f1d1d; color: #fca5a5; }
-  .color-row { display: flex; gap: 12px; align-items: flex-end; }
   .color-preview { width: 40px; height: 40px; border-radius: 6px; border: 1px solid #333; background: #ff0000; flex-shrink: 0; }
   .info { font-size: 11px; color: #555; margin-top: 6px; }
+  .calc-info { font-size: 11px; color: #555; padding: 6px 8px; background: #111; border-radius: 6px; margin-top: 6px; }
   .alert { padding: 10px 12px; border-radius: 6px; font-size: 12px; margin-top: 8px; display: none; }
   .alert-ok { background: #14532d; color: #86efac; }
   .alert-err { background: #7f1d1d; color: #fca5a5; }
+  .univ2-fields { display: none; }
+  .univ2-fields.visible { display: block; }
+  .help-btn { background: none; border: 1px solid #333; border-radius: 4px; color: #666; font-size: 11px; padding: 2px 8px; cursor: pointer; margin-left: 8px; }
+  .help-btn:hover { color: #aaa; border-color: #555; }
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 100; overflow-y: auto; padding: 20px; }
+  .modal-overlay.open { display: block; }
+  .modal { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 20px; max-width: 600px; margin: 0 auto; }
+  .modal h3 { font-size: 15px; font-weight: 500; color: #fff; margin-bottom: 16px; }
+  .modal-close { float: right; background: none; border: none; color: #555; font-size: 20px; cursor: pointer; line-height: 1; }
+  .mode-block { background: #111; border-radius: 8px; padding: 12px; margin-bottom: 10px; border-left: 3px solid #333; }
+  .mode-block.td { border-left-color: #2563eb; }
+  .mode-block.qlc { border-left-color: #16a34a; }
+  .mode-block.res { border-left-color: #9333ea; }
+  .mode-title { font-size: 12px; font-weight: 500; color: #e0e0e0; margin-bottom: 6px; }
+  .mode-soft { font-size: 11px; color: #666; margin-bottom: 8px; }
+  .mode-desc { font-size: 11px; color: #888; line-height: 1.5; }
+  .univ-diagram { display: flex; gap: 2px; margin: 8px 0; align-items: stretch; }
+  .univ-block { border-radius: 4px; padding: 4px 6px; font-size: 10px; text-align: center; }
+  .u1-block { background: #1e3a5f; color: #93c5fd; flex: 3; }
+  .u2-block { background: #14532d; color: #86efac; flex: 2; }
+  .skip-block { background: #2a2020; color: #555; flex: 0.3; font-size: 9px; }
+  .cut-block { background: #3b1818; color: #f87171; flex: 0.4; font-size: 9px; }
+  .led-row { display: flex; gap: 2px; flex-wrap: wrap; margin: 6px 0; }
+  .led-dot { width: 10px; height: 10px; border-radius: 2px; }
+  .led-u1 { background: #1d4ed8; }
+  .led-u2 { background: #15803d; }
+  .led-cut { background: #991b1b; }
 </style>
 </head>
 <body>
@@ -45,13 +71,12 @@
 <!-- Statut -->
 <div class="card">
   <h2>Statut</h2>
-  <div class="status-row"><span>Nom</span><span class="status-val" id="s-name">—</span></div>
-  <div class="status-row"><span>IP</span><span class="status-val" id="s-ip">—</span></div>
-  <div class="status-row"><span>Wi-Fi</span><span class="status-val" id="s-rssi">—</span></div>
-  <div class="status-row"><span>État</span><span class="status-val" id="s-state">—</span></div>
-  <div class="status-row"><span>RAM libre</span><span class="status-val" id="s-heap">—</span></div>
-  <div class="status-row"><span>Uptime</span><span class="status-val" id="s-uptime">—</span></div>
-  <div class="status-row"><span>Firmware</span><span class="status-val" id="s-fw">—</span></div>
+  <div class="status-row"><span>Nom</span><span id="s-name">—</span></div>
+  <div class="status-row"><span>IP</span><span id="s-ip">—</span></div>
+  <div class="status-row"><span>Wi-Fi</span><span id="s-rssi">—</span></div>
+  <div class="status-row"><span>État</span><span id="s-state">—</span></div>
+  <div class="status-row"><span>RAM libre</span><span id="s-heap">—</span></div>
+  <div class="status-row"><span>Uptime</span><span id="s-uptime">—</span></div>
 </div>
 
 <!-- Configuration DMX -->
@@ -60,7 +85,7 @@
   <div class="row">
     <div class="field">
       <label>Nom de la barre</label>
-      <input type="text" id="c-name" placeholder="barre-led-1">
+      <input type="text" id="c-name">
     </div>
   </div>
   <div class="row">
@@ -87,7 +112,7 @@
       </select>
     </div>
   </div>
-  <div class="row" id="group-row">
+  <div class="row" id="group-row" style="display:none">
     <div class="field">
       <label>LEDs par groupe</label>
       <input type="number" id="c-groupsize" min="1" max="300">
@@ -97,7 +122,52 @@
       <input type="number" id="c-brightness" min="0" max="255">
     </div>
   </div>
-  <p class="info" id="c-calc">—</p>
+  <div class="row" id="brightness-row">
+    <div class="field">
+      <label>Luminosité (0-255)</label>
+      <input type="number" id="c-brightness2" min="0" max="255">
+    </div>
+    <div class="field"></div>
+  </div>
+  <p class="calc-info" id="c-calc">—</p>
+
+  <!-- Multi-univers -->
+  <div style="margin-top:14px; padding-top:14px; border-top:1px solid #2a2a2a;">
+    <div style="display:flex; align-items:center; margin-bottom:10px;">
+      <span style="font-size:12px; font-weight:500; color:#aaa;">MULTI-UNIVERS</span>
+      <button class="help-btn" onclick="openHelp()">? aide</button>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label>Mode univers</label>
+        <select id="c-univmode" onchange="onUnivModeChange()">
+          <option value="0">Manuel (TouchDesigner)</option>
+          <option value="1">Continuation (QLC+)</option>
+          <option value="2">Pixel aligné (Resolume)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>2ème univers (0 = désactivé)</label>
+        <input type="number" id="c-univ2" min="0" max="32767" oninput="onUniv2Change()">
+      </div>
+    </div>
+
+    <div id="univ2-fields" class="univ2-fields">
+      <div class="row">
+        <div class="field">
+          <label>Canal départ univers 2</label>
+          <input type="number" id="c-univ2startch" min="1" max="512">
+        </div>
+        <div class="field" id="univ2-ledstart-field">
+          <label>LED de départ dans U2 (manuel)</label>
+          <input type="number" id="c-univ2ledstart" min="1" max="300">
+        </div>
+      </div>
+      <p class="calc-info" id="c-univ2-calc">—</p>
+    </div>
+  </div>
+
   <div class="alert" id="cfg-alert"></div>
   <br>
   <button class="btn btn-primary" onclick="saveConfig()">Enregistrer</button>
@@ -106,7 +176,7 @@
 <!-- Test LEDs -->
 <div class="card">
   <h2>Test LEDs</h2>
-  <div class="color-row">
+  <div class="row" style="align-items:flex-end;">
     <div class="field">
       <label>Rouge</label>
       <input type="number" id="t-r" min="0" max="255" value="255">
@@ -123,7 +193,7 @@
   </div>
   <br>
   <div class="btn-row">
-    <button class="btn btn-primary" onclick="testColor()">Appliquer couleur</button>
+    <button class="btn btn-primary" onclick="testColor()">Appliquer</button>
     <button class="btn btn-secondary" onclick="testRainbow()">🌈 Rainbow</button>
     <button class="btn btn-secondary" onclick="testOff()">Éteindre</button>
   </div>
@@ -135,13 +205,13 @@
   <div class="row">
     <div class="field">
       <label>SSID</label>
-      <input type="text" id="w-ssid" placeholder="Nom du réseau">
+      <input type="text" id="w-ssid">
     </div>
   </div>
   <div class="row">
     <div class="field">
       <label>Mot de passe</label>
-      <input type="password" id="w-pass" placeholder="••••••••">
+      <input type="password" id="w-pass">
     </div>
   </div>
   <div class="alert" id="wifi-alert"></div>
@@ -149,11 +219,105 @@
   <button class="btn btn-primary" onclick="saveWifi()">Connecter</button>
 </div>
 
-<!-- Danger zone -->
+<!-- Système -->
 <div class="card">
   <h2>Système</h2>
   <div class="btn-row">
     <button class="btn btn-danger" onclick="reboot()">Redémarrer</button>
+  </div>
+</div>
+
+<!-- Modal aide multi-univers -->
+<div class="modal-overlay" id="help-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeHelp()">×</button>
+    <h3>Guide multi-univers</h3>
+    <p style="font-size:12px; color:#666; margin-bottom:16px;">
+      Une barre de 300 LEDs en Full Pixel nécessite 900 canaux DMX.
+      Un univers ne contient que 512 canaux — il faut donc 2 univers.
+      Chaque logiciel gère ce découpage différemment.
+    </p>
+
+    <div class="mode-block td">
+      <div class="mode-title">Mode Manuel</div>
+      <div class="mode-soft">TouchDesigner (DMX Fixture POP)</div>
+      <div class="mode-desc">
+        Tu définis toi-même dans TouchDesigner quelle LED commence dans l'univers 2.
+        Configure ici le même numéro de LED de départ que dans ton projet TD.
+      </div>
+      <div class="univ-diagram" style="margin-top:8px;">
+        <div class="univ-block u1-block">Univers 1<br>LEDs 1→170</div>
+        <div class="univ-block u2-block">Univers 2<br>LEDs 171→300</div>
+      </div>
+      <div class="led-row">
+        <div class="led-dot led-u1"></div><div class="led-dot led-u1"></div>
+        <div class="led-dot led-u1"></div><div class="led-dot led-u1"></div>
+        <div class="led-dot led-u1"></div><div class="led-dot led-u1"></div>
+        <div class="led-dot led-u1"></div><div class="led-dot led-u1"></div>
+        <div class="led-dot led-u2"></div><div class="led-dot led-u2"></div>
+        <div class="led-dot led-u2"></div><div class="led-dot led-u2"></div>
+        <div class="led-dot led-u2"></div><div class="led-dot led-u2"></div>
+      </div>
+      <div style="font-size:10px; color:#555; margin-top:4px;">
+        Bleu = univers 1 · Vert = univers 2
+      </div>
+    </div>
+
+    <div class="mode-block qlc">
+      <div class="mode-title">Mode Continuation</div>
+      <div class="mode-soft">QLC+ · grandMA</div>
+      <div class="mode-desc">
+        Le logiciel continue les canaux DMX sans interruption.
+        Une LED peut être coupée entre deux univers : R et G dans l'univers 1,
+        B dans l'univers 2. Le firmware recolle les octets automatiquement.
+      </div>
+      <div class="univ-diagram" style="margin-top:8px;">
+        <div class="univ-block u1-block">Univers 1<br>ch.1→512</div>
+        <div class="univ-block cut-block" style="font-size:9px; display:flex; align-items:center;">✂</div>
+        <div class="univ-block u2-block">Univers 2<br>ch.1→388</div>
+      </div>
+      <div class="led-row">
+        <div class="led-dot led-u1"></div><div class="led-dot led-u1"></div>
+        <div class="led-dot led-u1"></div><div class="led-dot led-u1"></div>
+        <div class="led-dot led-u1"></div><div class="led-dot led-u1"></div>
+        <div class="led-dot led-u1"></div><div class="led-dot led-cut"></div>
+        <div class="led-dot led-u2"></div><div class="led-dot led-u2"></div>
+        <div class="led-dot led-u2"></div><div class="led-dot led-u2"></div>
+        <div class="led-dot led-u2"></div><div class="led-dot led-u2"></div>
+      </div>
+      <div style="font-size:10px; color:#555; margin-top:4px;">
+        Rouge = LED coupée entre 2 univers (R/G dans U1, B dans U2)
+      </div>
+    </div>
+
+    <div class="mode-block res">
+      <div class="mode-title">Mode Pixel Aligné</div>
+      <div class="mode-soft">Resolume Arena · Avenue</div>
+      <div class="mode-desc">
+        Resolume garantit que R, G et B d'un même pixel restent dans le même univers.
+        Il saute 1 ou 2 canaux en fin d'univers 1 pour rester aligné sur des multiples de 3.
+        Le firmware ignore ces canaux vides automatiquement.
+      </div>
+      <div class="univ-diagram" style="margin-top:8px;">
+        <div class="univ-block u1-block">Univers 1<br>ch.1→510</div>
+        <div class="univ-block skip-block" style="display:flex; align-items:center; justify-content:center;">skip</div>
+        <div class="univ-block u2-block">Univers 2<br>ch.1→390</div>
+      </div>
+      <div class="led-row">
+        <div class="led-dot led-u1"></div><div class="led-dot led-u1"></div>
+        <div class="led-dot led-u1"></div><div class="led-dot led-u1"></div>
+        <div class="led-dot led-u1"></div><div class="led-dot led-u1"></div>
+        <div class="led-dot led-u1"></div><div class="led-dot led-u1"></div>
+        <div class="led-dot led-u2"></div><div class="led-dot led-u2"></div>
+        <div class="led-dot led-u2"></div><div class="led-dot led-u2"></div>
+        <div class="led-dot led-u2"></div><div class="led-dot led-u2"></div>
+      </div>
+      <div style="font-size:10px; color:#555; margin-top:4px;">
+        Aucune LED coupée — canaux 511-512 ignorés par Resolume
+      </div>
+    </div>
+
+    <button class="btn btn-secondary" onclick="closeHelp()" style="margin-top:8px; width:100%;">Fermer</button>
   </div>
 </div>
 
@@ -172,7 +336,11 @@ const show = (id, msg, ok) => {
   setTimeout(() => el.style.display = 'none', 3000);
 };
 
-// Mise à jour prévisualisation couleur
+// ── Aide modal ────────────────────────────────────────────────────────────────
+function openHelp()  { document.getElementById('help-modal').classList.add('open'); }
+function closeHelp() { document.getElementById('help-modal').classList.remove('open'); }
+
+// ── Couleur preview ───────────────────────────────────────────────────────────
 ['t-r','t-g','t-b'].forEach(id => {
   document.getElementById(id).addEventListener('input', updatePreview);
 });
@@ -180,41 +348,85 @@ function updatePreview() {
   const r = document.getElementById('t-r').value;
   const g = document.getElementById('t-g').value;
   const b = document.getElementById('t-b').value;
-  document.getElementById('color-preview').style.background =
-    `rgb(${r},${g},${b})`;
+  document.getElementById('color-preview').style.background = `rgb(${r},${g},${b})`;
 }
 
-// Affiche/cache champ groupe selon mode
+// ── Affichage conditionnel ────────────────────────────────────────────────────
 document.getElementById('c-mode').addEventListener('change', updateCalc);
-['c-leds','c-universe','c-startch','c-groupsize','c-mode'].forEach(id => {
-  document.getElementById(id).addEventListener('input', updateCalc);
+['c-leds','c-universe','c-startch','c-groupsize','c-mode',
+ 'c-univ2','c-univmode','c-univ2startch','c-univ2ledstart'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', updateCalc);
 });
 
+function onUniv2Change() {
+  const v = parseInt(document.getElementById('c-univ2').value) || 0;
+  document.getElementById('univ2-fields').classList.toggle('visible', v > 0);
+  updateCalc();
+}
+
+function onUnivModeChange() {
+  const mode = parseInt(document.getElementById('c-univmode').value);
+  const manualField = document.getElementById('univ2-ledstart-field');
+  manualField.style.display = (mode === 0) ? 'block' : 'none';
+  updateCalc();
+}
+
 function updateCalc() {
-  const leds  = parseInt(document.getElementById('c-leds').value) || 0;
-  const mode  = parseInt(document.getElementById('c-mode').value);
-  const start = parseInt(document.getElementById('c-startch').value) || 1;
-  const group = parseInt(document.getElementById('c-groupsize').value) || 1;
-  document.getElementById('group-row').style.display =
-    mode === 1 ? 'flex' : 'none';
+  const leds    = parseInt(document.getElementById('c-leds').value) || 0;
+  const mode    = parseInt(document.getElementById('c-mode').value);
+  const start   = parseInt(document.getElementById('c-startch').value) || 1;
+  const group   = parseInt(document.getElementById('c-groupsize').value) || 1;
+  const univ2   = parseInt(document.getElementById('c-univ2').value) || 0;
+  const uMode   = parseInt(document.getElementById('c-univmode').value);
+
+  // Affichage champ groupe
+  document.getElementById('group-row').style.display = (mode === 1) ? 'flex' : 'none';
+  document.getElementById('brightness-row').style.display = (mode === 1) ? 'none' : 'flex';
+
+  // Calcul canaux
   let ch = 0;
   if (mode === 0) ch = leds * 3;
   else if (mode === 1) ch = Math.ceil(leds / group) * 3;
   else ch = 3;
   const last = start + ch - 1;
-  document.getElementById('c-calc').textContent =
-    `→ ${ch} canaux DMX utilisés · dernier canal : ${last}`;
+
+  let calcText = `→ ${ch} canaux · dernier canal : ${last}`;
+  if (ch > 512 && univ2 === 0) {
+    calcText += ' ⚠️ dépasse 512 — activer le 2ème univers';
+  }
+  document.getElementById('c-calc').textContent = calcText;
+
+  // Calcul multi-univers
+  if (univ2 > 0 && mode === 0) {
+    const chInU1 = 512 - (start - 1);
+    let ledStartU2 = 0;
+    let skip = 0;
+
+    if (uMode === 0) {
+      ledStartU2 = parseInt(document.getElementById('c-univ2ledstart').value) || 0;
+    } else if (uMode === 1) {
+      ledStartU2 = Math.floor(chInU1 / 3);
+    } else {
+      ledStartU2 = Math.floor(chInU1 / 3);
+      skip = chInU1 % 3 === 0 ? 0 : (3 - chInU1 % 3);
+    }
+
+    const ledsU2 = leds - ledStartU2;
+    let u2text = `Univers 2 → LEDs ${ledStartU2 + 1}→${leds} (${ledsU2} LEDs · ${ledsU2 * 3} canaux)`;
+    if (skip > 0) u2text += ` · skip ${skip} canal${skip > 1 ? 'aux' : ''} en fin U1`;
+    document.getElementById('c-univ2-calc').textContent = u2text;
+  }
 }
 
-// Chargement statut
+// ── Chargement ────────────────────────────────────────────────────────────────
 function loadStatus() {
   api('/api/status').then(d => {
     document.getElementById('s-name').textContent   = d.name;
     document.getElementById('s-ip').textContent     = d.ip;
     document.getElementById('s-rssi').textContent   = d.rssi + ' dBm';
-    document.getElementById('s-heap').textContent   = d.freeHeap + ' octets';
+    document.getElementById('s-heap').textContent   = d.freeHeap + ' o';
     document.getElementById('s-uptime').textContent = d.uptime + 's';
-    document.getElementById('s-fw').textContent     = d.firmware;
     document.getElementById('device-subtitle').textContent = d.name + ' · ' + d.ip;
     const states = ['Déconnecté','Connexion...','Connecté','Mode AP'];
     const colors = ['badge-red','badge-yellow','badge-green','badge-yellow'];
@@ -223,16 +435,22 @@ function loadStatus() {
   }).catch(() => {});
 }
 
-// Chargement config
 function loadConfig() {
   api('/api/config').then(d => {
-    document.getElementById('c-name').value      = d.deviceName;
-    document.getElementById('c-leds').value      = d.ledCount;
-    document.getElementById('c-universe').value  = d.dmxUniverse;
-    document.getElementById('c-startch').value   = d.dmxStartChannel;
-    document.getElementById('c-mode').value      = d.dmxMode;
-    document.getElementById('c-groupsize').value = d.dmxGroupSize;
+    document.getElementById('c-name').value       = d.deviceName;
+    document.getElementById('c-leds').value       = d.ledCount;
+    document.getElementById('c-universe').value   = d.dmxUniverse;
+    document.getElementById('c-startch').value    = d.dmxStartChannel;
+    document.getElementById('c-mode').value       = d.dmxMode;
+    document.getElementById('c-groupsize').value  = d.dmxGroupSize;
     document.getElementById('c-brightness').value = d.brightness;
+    document.getElementById('c-brightness2').value= d.brightness;
+    document.getElementById('c-univ2').value      = d.universe2;
+    document.getElementById('c-univ2startch').value = d.universe2StartCh;
+    document.getElementById('c-univ2ledstart').value = d.universe2LedStart;
+    document.getElementById('c-univmode').value   = d.universeMode;
+    onUniv2Change();
+    onUnivModeChange();
     updateCalc();
     updatePreview();
   }).catch(() => {});
@@ -240,10 +458,48 @@ function loadConfig() {
 
 function saveConfig() {
   const body = {
-    deviceName:      document.getElementById('c-name').value,
-    ledCount:        parseInt(document.getElementById('c-leds').value),
-    dmxUniverse:     parseInt(document.getElementById('c-universe').value),
-    dmxStartChannel: parseInt(document.getElementById('c-startch').value),
-    dmxMode:         parseInt(document.getElementById('c-mode').value),
-    dmxGroupSize:    parseInt(document.getElementById('c-groupsize').value),
-    brightness:      parseInt(document.getElementById('c-b
+    deviceName:        document.getElementById('c-name').value,
+    ledCount:          parseInt(document.getElementById('c-leds').value),
+    dmxUniverse:       parseInt(document.getElementById('c-universe').value),
+    dmxStartChannel:   parseInt(document.getElementById('c-startch').value),
+    dmxMode:           parseInt(document.getElementById('c-mode').value),
+    dmxGroupSize:      parseInt(document.getElementById('c-groupsize').value),
+    brightness:        parseInt(document.getElementById('c-brightness2').value),
+    universe2:         parseInt(document.getElementById('c-univ2').value),
+    universe2StartCh:  parseInt(document.getElementById('c-univ2startch').value),
+    universe2LedStart: parseInt(document.getElementById('c-univ2ledstart').value),
+    universeMode:      parseInt(document.getElementById('c-univmode').value),
+  };
+  api('/api/config', 'POST', body)
+    .then(() => show('cfg-alert', '✓ Configuration enregistrée', true))
+    .catch(() => show('cfg-alert', '✗ Erreur', false));
+}
+
+function saveWifi() {
+  api('/api/wifi', 'POST', {
+    ssid:     document.getElementById('w-ssid').value,
+    password: document.getElementById('w-pass').value,
+  }).then(() => show('wifi-alert', '✓ Wi-Fi enregistré · Redémarrage...', true))
+    .catch(() => show('wifi-alert', '✗ Erreur', false));
+}
+
+function testColor() {
+  api('/api/test', 'POST', {
+    mode: 'color',
+    r: parseInt(document.getElementById('t-r').value),
+    g: parseInt(document.getElementById('t-g').value),
+    b: parseInt(document.getElementById('t-b').value),
+  });
+}
+function testRainbow() { api('/api/test', 'POST', { mode: 'rainbow' }); }
+function testOff()     { api('/api/test', 'POST', { mode: 'off' }); }
+function reboot() {
+  if (confirm('Redémarrer ?')) api('/api/reboot', 'POST');
+}
+
+loadStatus();
+loadConfig();
+setInterval(loadStatus, 5000);
+</script>
+</body>
+</html>
