@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LED Controller</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #0f0f0f; color: #e0e0e0; padding: 16px; }
+  h1 { font-size: 18px; font-weight: 500; margin-bottom: 4px; color: #fff; }
+  .subtitle { font-size: 12px; color: #666; margin-bottom: 20px; }
+  .card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px; padding: 16px; margin-bottom: 12px; }
+  .card h2 { font-size: 13px; font-weight: 500; color: #aaa; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .row { display: flex; gap: 12px; margin-bottom: 10px; }
+  .field { flex: 1; }
+  label { display: block; font-size: 11px; color: #666; margin-bottom: 4px; }
+  input, select { width: 100%; background: #111; border: 1px solid #333; border-radius: 6px; color: #e0e0e0; padding: 8px 10px; font-size: 13px; }
+  input:focus, select:focus { outline: none; border-color: #555; }
+  .btn { padding: 9px 16px; border-radius: 6px; border: none; font-size: 13px; cursor: pointer; font-weight: 500; }
+  .btn-primary { background: #2563eb; color: #fff; }
+  .btn-secondary { background: #2a2a2a; color: #ccc; border: 1px solid #333; }
+  .btn-danger { background: #7f1d1d; color: #fca5a5; }
+  .btn:hover { opacity: 0.85; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .status-row { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px solid #222; }
+  .status-row:last-child { border-bottom: none; }
+  .status-val { color: #aaa; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; }
+  .badge-green { background: #14532d; color: #86efac; }
+  .badge-yellow { background: #713f12; color: #fde68a; }
+  .badge-red { background: #7f1d1d; color: #fca5a5; }
+  .color-row { display: flex; gap: 12px; align-items: flex-end; }
+  .color-preview { width: 40px; height: 40px; border-radius: 6px; border: 1px solid #333; background: #ff0000; flex-shrink: 0; }
+  .info { font-size: 11px; color: #555; margin-top: 6px; }
+  .alert { padding: 10px 12px; border-radius: 6px; font-size: 12px; margin-top: 8px; display: none; }
+  .alert-ok { background: #14532d; color: #86efac; }
+  .alert-err { background: #7f1d1d; color: #fca5a5; }
+</style>
+</head>
+<body>
+
+<h1>💡 LED Controller</h1>
+<p class="subtitle" id="device-subtitle">Chargement...</p>
+
+<!-- Statut -->
+<div class="card">
+  <h2>Statut</h2>
+  <div class="status-row"><span>Nom</span><span class="status-val" id="s-name">—</span></div>
+  <div class="status-row"><span>IP</span><span class="status-val" id="s-ip">—</span></div>
+  <div class="status-row"><span>Wi-Fi</span><span class="status-val" id="s-rssi">—</span></div>
+  <div class="status-row"><span>État</span><span class="status-val" id="s-state">—</span></div>
+  <div class="status-row"><span>RAM libre</span><span class="status-val" id="s-heap">—</span></div>
+  <div class="status-row"><span>Uptime</span><span class="status-val" id="s-uptime">—</span></div>
+  <div class="status-row"><span>Firmware</span><span class="status-val" id="s-fw">—</span></div>
+</div>
+
+<!-- Configuration DMX -->
+<div class="card">
+  <h2>Configuration DMX</h2>
+  <div class="row">
+    <div class="field">
+      <label>Nom de la barre</label>
+      <input type="text" id="c-name" placeholder="barre-led-1">
+    </div>
+  </div>
+  <div class="row">
+    <div class="field">
+      <label>Univers DMX</label>
+      <input type="number" id="c-universe" min="0" max="32767">
+    </div>
+    <div class="field">
+      <label>Canal de départ</label>
+      <input type="number" id="c-startch" min="1" max="512">
+    </div>
+  </div>
+  <div class="row">
+    <div class="field">
+      <label>Nombre de LEDs</label>
+      <input type="number" id="c-leds" min="1" max="300">
+    </div>
+    <div class="field">
+      <label>Mode DMX</label>
+      <select id="c-mode">
+        <option value="0">Full Pixel (1 LED = 3ch)</option>
+        <option value="1">Grouped (N LEDs = 3ch)</option>
+        <option value="2">Full Bar (barre = 3ch)</option>
+      </select>
+    </div>
+  </div>
+  <div class="row" id="group-row">
+    <div class="field">
+      <label>LEDs par groupe</label>
+      <input type="number" id="c-groupsize" min="1" max="300">
+    </div>
+    <div class="field">
+      <label>Luminosité (0-255)</label>
+      <input type="number" id="c-brightness" min="0" max="255">
+    </div>
+  </div>
+  <p class="info" id="c-calc">—</p>
+  <div class="alert" id="cfg-alert"></div>
+  <br>
+  <button class="btn btn-primary" onclick="saveConfig()">Enregistrer</button>
+</div>
+
+<!-- Test LEDs -->
+<div class="card">
+  <h2>Test LEDs</h2>
+  <div class="color-row">
+    <div class="field">
+      <label>Rouge</label>
+      <input type="number" id="t-r" min="0" max="255" value="255">
+    </div>
+    <div class="field">
+      <label>Vert</label>
+      <input type="number" id="t-g" min="0" max="255" value="0">
+    </div>
+    <div class="field">
+      <label>Bleu</label>
+      <input type="number" id="t-b" min="0" max="255" value="0">
+    </div>
+    <div class="color-preview" id="color-preview"></div>
+  </div>
+  <br>
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="testColor()">Appliquer couleur</button>
+    <button class="btn btn-secondary" onclick="testRainbow()">🌈 Rainbow</button>
+    <button class="btn btn-secondary" onclick="testOff()">Éteindre</button>
+  </div>
+</div>
+
+<!-- Wi-Fi -->
+<div class="card">
+  <h2>Wi-Fi</h2>
+  <div class="row">
+    <div class="field">
+      <label>SSID</label>
+      <input type="text" id="w-ssid" placeholder="Nom du réseau">
+    </div>
+  </div>
+  <div class="row">
+    <div class="field">
+      <label>Mot de passe</label>
+      <input type="password" id="w-pass" placeholder="••••••••">
+    </div>
+  </div>
+  <div class="alert" id="wifi-alert"></div>
+  <br>
+  <button class="btn btn-primary" onclick="saveWifi()">Connecter</button>
+</div>
+
+<!-- Danger zone -->
+<div class="card">
+  <h2>Système</h2>
+  <div class="btn-row">
+    <button class="btn btn-danger" onclick="reboot()">Redémarrer</button>
+  </div>
+</div>
+
+<script>
+const api = (path, method = 'GET', body = null) => {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  return fetch(path, opts).then(r => r.json());
+};
+
+const show = (id, msg, ok) => {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = 'alert ' + (ok ? 'alert-ok' : 'alert-err');
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3000);
+};
+
+// Mise à jour prévisualisation couleur
+['t-r','t-g','t-b'].forEach(id => {
+  document.getElementById(id).addEventListener('input', updatePreview);
+});
+function updatePreview() {
+  const r = document.getElementById('t-r').value;
+  const g = document.getElementById('t-g').value;
+  const b = document.getElementById('t-b').value;
+  document.getElementById('color-preview').style.background =
+    `rgb(${r},${g},${b})`;
+}
+
+// Affiche/cache champ groupe selon mode
+document.getElementById('c-mode').addEventListener('change', updateCalc);
+['c-leds','c-universe','c-startch','c-groupsize','c-mode'].forEach(id => {
+  document.getElementById(id).addEventListener('input', updateCalc);
+});
+
+function updateCalc() {
+  const leds  = parseInt(document.getElementById('c-leds').value) || 0;
+  const mode  = parseInt(document.getElementById('c-mode').value);
+  const start = parseInt(document.getElementById('c-startch').value) || 1;
+  const group = parseInt(document.getElementById('c-groupsize').value) || 1;
+  document.getElementById('group-row').style.display =
+    mode === 1 ? 'flex' : 'none';
+  let ch = 0;
+  if (mode === 0) ch = leds * 3;
+  else if (mode === 1) ch = Math.ceil(leds / group) * 3;
+  else ch = 3;
+  const last = start + ch - 1;
+  document.getElementById('c-calc').textContent =
+    `→ ${ch} canaux DMX utilisés · dernier canal : ${last}`;
+}
+
+// Chargement statut
+function loadStatus() {
+  api('/api/status').then(d => {
+    document.getElementById('s-name').textContent   = d.name;
+    document.getElementById('s-ip').textContent     = d.ip;
+    document.getElementById('s-rssi').textContent   = d.rssi + ' dBm';
+    document.getElementById('s-heap').textContent   = d.freeHeap + ' octets';
+    document.getElementById('s-uptime').textContent = d.uptime + 's';
+    document.getElementById('s-fw').textContent     = d.firmware;
+    document.getElementById('device-subtitle').textContent = d.name + ' · ' + d.ip;
+    const states = ['Déconnecté','Connexion...','Connecté','Mode AP'];
+    const colors = ['badge-red','badge-yellow','badge-green','badge-yellow'];
+    const s = document.getElementById('s-state');
+    s.innerHTML = `<span class="badge ${colors[d.wifiState]}">${states[d.wifiState]}</span>`;
+  }).catch(() => {});
+}
+
+// Chargement config
+function loadConfig() {
+  api('/api/config').then(d => {
+    document.getElementById('c-name').value      = d.deviceName;
+    document.getElementById('c-leds').value      = d.ledCount;
+    document.getElementById('c-universe').value  = d.dmxUniverse;
+    document.getElementById('c-startch').value   = d.dmxStartChannel;
+    document.getElementById('c-mode').value      = d.dmxMode;
+    document.getElementById('c-groupsize').value = d.dmxGroupSize;
+    document.getElementById('c-brightness').value = d.brightness;
+    updateCalc();
+    updatePreview();
+  }).catch(() => {});
+}
+
+function saveConfig() {
+  const body = {
+    deviceName:      document.getElementById('c-name').value,
+    ledCount:        parseInt(document.getElementById('c-leds').value),
+    dmxUniverse:     parseInt(document.getElementById('c-universe').value),
+    dmxStartChannel: parseInt(document.getElementById('c-startch').value),
+    dmxMode:         parseInt(document.getElementById('c-mode').value),
+    dmxGroupSize:    parseInt(document.getElementById('c-groupsize').value),
+    brightness:      parseInt(document.getElementById('c-b
