@@ -8,8 +8,8 @@ Système de contrôle de barres LED WS2812B via ESP32, Art-Net et sACN sur Wi-Fi
 Logiciel lumière (TouchDesigner / QLC+ / Resolume / grandMA)
         ↓  Art-Net / sACN — UDP broadcast direct
    Réseau Wi-Fi
-        ↓  chaque ESP32 reçoit et filtre son univers
-   ESP32 + WS2812B
+        ↓  chaque ESP32 reçoit et filtre ses univers
+   ESP32 + WS2812B (1 à 4 bandes par ESP32)
 ```
 
 Le serveur central **ne relaie pas** le flux lumière. Il sert uniquement à configurer les barres et visualiser leur état.
@@ -24,6 +24,13 @@ DMX_Led/
 └── docker/            # Déploiement Docker (optionnel)
 ```
 
+## Branches
+
+| Branche | Description |
+|---|---|
+| `main` | Version stable — 1 bande LED par ESP32 |
+| `feature/multi-strip` | Version avancée — jusqu'à 4 bandes par ESP32 |
+
 ## Matériel recommandé
 
 | Composant | Modèle recommandé |
@@ -31,7 +38,8 @@ DMX_Led/
 | Microcontrôleur | ESP32-S3-DevKitC-1 |
 | LEDs | WS2812B 5V, 60 LED/m |
 | Alimentation | 5V / 10A minimum pour 300 LEDs |
-| Câble data | Résistance 300-500Ω sur DATA |
+| Résistance data | 330Ω sur chaque ligne DATA |
+| Condensateur | 1000µF 6.3V entre +5V et GND |
 
 ## Prérequis logiciels
 
@@ -79,9 +87,17 @@ pio run --target uploadfs        # flasher l'interface web locale
 pio device monitor               # voir les logs série
 ```
 
+## Capacité du système
+
+| Configuration | Bandes | LEDs max/barre | Canaux DMX max |
+|---|---|---|---|
+| 1 bande / ESP32 (main) | 1 | 300 | 900 (2 univers) |
+| Multi-bandes / ESP32 (feature) | 4 | 300 | 900 par bande |
+| Système complet | 50 ESP32 | 300 | illimité |
+
 ## Configuration DMX
 
-Chaque barre est configurée avec :
+Chaque bande est configurée avec :
 
 | Paramètre | Description |
 |---|---|
@@ -93,12 +109,15 @@ Chaque barre est configurée avec :
 | Luminosité | 0–255 |
 | FPS max | Fréquence de rafraîchissement maximum |
 | Timeout | Délai avant mode autonome (ms) |
+| Univers 2 | 2ème univers pour bandes > 170 LEDs en Full Pixel |
+| Mode univers | Manuel / Continuation / Pixel aligné |
 
 ### Modes DMX
 
 **Full Pixel** — 1 LED = 3 canaux (R, G, B)
 ```
 100 LEDs → 300 canaux DMX
+300 LEDs → 900 canaux DMX (2 univers nécessaires)
 ```
 
 **Grouped** — N LEDs = 3 canaux (R, G, B)
@@ -110,6 +129,18 @@ Chaque barre est configurée avec :
 ```
 N LEDs → 3 canaux DMX
 ```
+
+## Gestion multi-univers
+
+Une bande de 300 LEDs en Full Pixel nécessite 900 canaux DMX. Un univers ne contenant que 512 canaux, il faut 2 univers. Chaque logiciel gère ce découpage différemment :
+
+| Mode | Logiciel | Comportement |
+|---|---|---|
+| Manuel | TouchDesigner | Tu définis toi-même la LED de départ dans U2 |
+| Continuation | QLC+, grandMA | Canaux continus, une LED peut être coupée entre U1 et U2 |
+| Pixel aligné | Resolume | Skip 1-2 canaux en fin U1, pixels jamais coupés |
+
+Le firmware gère automatiquement les trois modes et recolle les données correctement.
 
 ## Protocoles réseau
 
@@ -124,7 +155,19 @@ N LEDs → 3 canaux DMX
 
 ## Mode autonome
 
-Si aucun flux Art-Net/sACN n'est reçu pendant le délai configuré (défaut : 5 secondes), l'ESP32 bascule automatiquement en mode autonome avec des effets locaux. Le retour du signal DMX relance automatiquement le contrôle réseau.
+Si aucun flux Art-Net/sACN n'est reçu pendant le délai configuré (défaut : 5 secondes), chaque bande bascule automatiquement en mode autonome avec des effets locaux. Le retour du signal DMX relance automatiquement le contrôle réseau.
+
+## Effets autonomes disponibles
+
+| ID | Nom | Description |
+|---|---|---|
+| 0 | None | Aucun effet |
+| 1 | Solid | Couleur fixe |
+| 2 | Fade | Fondu entrée/sortie |
+| 3 | Breathing | Respiration douce |
+| 4 | Rainbow | Arc-en-ciel lent |
+| 5 | Chase | Pixel courant |
+| 6 | Strobe | Flash rapide |
 
 ## API REST backend
 
@@ -142,55 +185,20 @@ Si aucun flux Art-Net/sACN n'est reçu pendant le délai configuré (défaut : 5
 | Méthode | Endpoint | Description |
 |---|---|---|
 | GET | `/api/status` | État de la barre (IP, RSSI, uptime…) |
-| GET | `/api/config` | Configuration DMX |
+| GET | `/api/config` | Configuration complète |
 | POST | `/api/config` | Modifier la configuration |
 | POST | `/api/wifi` | Configurer le Wi-Fi |
 | POST | `/api/test` | Test LED (color / rainbow / off) |
 | POST | `/api/effect` | Activer un effet autonome |
 | POST | `/api/reboot` | Redémarrer l'ESP32 |
 
-## Effets autonomes disponibles
-
-| ID | Nom | Description |
-|---|---|---|
-| 0 | None | Aucun effet |
-| 1 | Solid | Couleur fixe |
-| 2 | Fade | Fondu entrée/sortie |
-| 3 | Breathing | Respiration douce |
-| 4 | Rainbow | Arc-en-ciel lent |
-| 5 | Chase | Pixel courant |
-| 6 | Strobe | Flash rapide |
-
 ## Compatibilité logiciels lumière
 
-- TouchDesigner
+- TouchDesigner (DMX Fixture POP)
 - QLC+
 - Resolume Arena / Avenue
 - grandMA2 / grandMA3
 - Tout logiciel compatible Art-Net ou sACN
-
-## Flasher un nouvel ESP32
-
-1. Brancher l'ESP32 en USB
-2. Vérifier le port : `pio device list`
-3. Compiler et flasher :
-
-```bash
-cd firmware
-pio run --target upload
-pio run --target uploadfs
-```
-
-4. Ouvrir le moniteur série :
-
-```bash
-pio device monitor
-```
-
-5. L'ESP32 démarre en mode AP `LED-SETUP-barre-led-1`
-6. Connecter son téléphone/PC au réseau `LED-SETUP-barre-led-1`
-7. Ouvrir `http://192.168.4.1` pour configurer le Wi-Fi
-8. Après redémarrage, l'ESP32 apparaît dans le dashboard
 
 ## Variables d'environnement frontend
 
@@ -214,6 +222,13 @@ Pour un déploiement sur Raspberry Pi, remplacer `localhost` par l'IP du Pi.
 - Vérifier l'univers DMX configuré sur la barre
 - Vérifier que le logiciel lumière envoie en broadcast ou vers l'IP de la barre
 - Vérifier le canal de départ
+- Si bande > 170 LEDs en Full Pixel : vérifier la config multi-univers
+
+**Couleurs décalées autour du point de coupure entre univers**
+- Vérifier que le mode univers correspond à ton logiciel (Manuel/Continuation/Pixel aligné)
+- TouchDesigner : mode Manuel, configurer la LED de départ dans U2
+- QLC+ : mode Continuation
+- Resolume : mode Pixel aligné
 
 **L'ESP32 redémarre en boucle**
 - Problème d'alimentation : vérifier que le 5V est suffisant
