@@ -22,6 +22,7 @@ private:
     WiFiManager*   _wifi    = nullptr;
 
     void _setupRoutes();
+
     void _handleGetStatus(AsyncWebServerRequest* req);
     void _handleGetConfig(AsyncWebServerRequest* req);
     void _handlePostConfig(AsyncWebServerRequest* req, JsonVariant& json);

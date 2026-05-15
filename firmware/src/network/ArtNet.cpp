@@ -3,26 +3,29 @@
 static const uint8_t ARTNET_HEADER[] = {
     'A','r','t','-','N','e','t',0x00
 };
-
 #define ARTNET_OPCODE_DMX_HI  0x50
 #define ARTNET_OPCODE_DMX_LO  0x00
 #define ARTNET_HEADER_SIZE    18
-
-// Délai max entre U1 et U2 pour les considérer synchronisés (ms)
-#define SYNC_TIMEOUT_MS       50
 
 void ArtNet::begin(DeviceConfig& config, ArtNetCallback callback) {
     _config   = &config;
     _callback = callback;
 
-    memset(_bufU1, 0, sizeof(_bufU1));
-    memset(_bufU2, 0, sizeof(_bufU2));
+    for (uint8_t i = 0; i < MAX_STRIPS; i++) {
+        memset(_strips[i].bufU1, 0, ARTNET_MAX_LENGTH);
+        memset(_strips[i].bufU2, 0, ARTNET_MAX_LENGTH);
+    }
 
     if (_udp.listen(ARTNET_PORT)) {
         Serial.printf("[ArtNet] Écoute port %d\n", ARTNET_PORT);
-        Serial.printf("[ArtNet] Univers 1 : %d\n", _config->dmxUniverse);
-        if (_config->universe2 > 0) {
-            Serial.printf("[ArtNet] Univers 2 : %d\n", _config->universe2);
+
+        for (uint8_t i = 0; i < MAX_STRIPS; i++) {
+            if (!config.strips[i].enabled) continue;
+            Serial.printf("[ArtNet] Bande %d : U%d",
+                          i+1, config.strips[i].dmxUniverse);
+            if (config.strips[i].universe2 > 0)
+                Serial.printf(" + U%d", config.strips[i].universe2);
+            Serial.println();
         }
 
         _udp.onPacket([this](AsyncUDPPacket packet) {
@@ -38,16 +41,24 @@ void ArtNet::stop() {
     _receiving = false;
 }
 
-// ─── Appelé dans loop() pour gérer le timeout de synchro ─────────────────────
 void ArtNet::loop() {
-    if (_config->universe2 == 0) return;
+    // Timeout synchro U1+U2 pour chaque bande
+    for (uint8_t i = 0; i < MAX_STRIPS; i++) {
+        if (!_config->strips[i].enabled) continue;
+        if (_config->strips[i].universe2 == 0) continue;
 
-    // Si U1 reçu mais U2 pas encore dans le délai → applique quand même U1 seul
-    if (_u1Ready && !_u2Ready) {
-        if (millis() - _u1Time > SYNC_TIMEOUT_MS) {
-            Serial.println("[ArtNet] Timeout U2 → applique U1 seul");
-            _u2Ready = true;  // force le merge avec buffer U2 vide
-            _tryMergeAndApply();
+        StripUniverse& su = _strips[i];
+        if (su.u1Ready && !su.u2Ready) {
+            if (millis() - su.u1Time > SYNC_TIMEOUT_MS) {
+                su.u2Ready = true;
+                _tryMergeAndApply(i);
+            }
+        }
+        if (su.u2Ready && !su.u1Ready) {
+            if (millis() - su.u2Time > SYNC_TIMEOUT_MS) {
+                su.u1Ready = true;
+                _tryMergeAndApply(i);
+            }
         }
     }
 }
@@ -66,114 +77,113 @@ void ArtNet::_handlePacket(AsyncUDPPacket& packet) {
     _packetCount++;
     _receiving   = true;
 
-    if (universe == _config->dmxUniverse) {
-        // ── Univers 1 ──────────────────────────────────────────────────────────
-        memcpy(_bufU1, data + ARTNET_HEADER_SIZE, dmxLen);
-        _lenU1   = dmxLen;
-        _u1Ready = true;
-        _u1Time  = millis();
+    // Cherche quelle(s) bande(s) utilisent cet univers
+    for (uint8_t i = 0; i < MAX_STRIPS; i++) {
+        if (!_config->strips[i].enabled) continue;
 
-        if (_config->universe2 == 0) {
-            // Pas de 2ème univers → applique directement
-            if (_callback) {
-                _callback(_bufU1, _lenU1);
+        StripConfig&   sc = _config->strips[i];
+        StripUniverse& su = _strips[i];
+
+        if (universe == sc.dmxUniverse) {
+            memcpy(su.bufU1, data + ARTNET_HEADER_SIZE, dmxLen);
+            su.lenU1  = dmxLen;
+            su.u1Ready = true;
+            su.u1Time  = millis();
+
+            if (sc.universe2 == 0) {
+                // Pas de 2ème univers → applique directement
+                uint8_t  merged[ARTNET_BUFFER_SIZE];
+                uint16_t mergedLen = 0;
+                _buildMergedBuffer(i, merged, mergedLen);
+                if (_callback) _callback(i, merged, mergedLen);
+            } else {
+                _tryMergeAndApply(i);
             }
-        } else {
-            _tryMergeAndApply();
-        }
 
-    } else if (_config->universe2 > 0 &&
-               universe == _config->universe2) {
-        // ── Univers 2 ──────────────────────────────────────────────────────────
-        memcpy(_bufU2, data + ARTNET_HEADER_SIZE, dmxLen);
-        _lenU2   = dmxLen;
-        _u2Ready = true;
-        _u2Time  = millis();
-        _tryMergeAndApply();
+        } else if (sc.universe2 > 0 && universe == sc.universe2) {
+            memcpy(su.bufU2, data + ARTNET_HEADER_SIZE, dmxLen);
+            su.lenU2  = dmxLen;
+            su.u2Ready = true;
+            su.u2Time  = millis();
+            _tryMergeAndApply(i);
+        }
     }
 }
 
-// ─── Tente de fusionner U1+U2 et appelle le callback ─────────────────────────
-void ArtNet::_tryMergeAndApply() {
-    if (!_u1Ready || !_u2Ready) return;
+void ArtNet::_tryMergeAndApply(uint8_t stripIndex) {
+    StripUniverse& su = _strips[stripIndex];
+    if (!su.u1Ready || !su.u2Ready) return;
 
     uint8_t  merged[ARTNET_BUFFER_SIZE];
     uint16_t mergedLen = 0;
+    _buildMergedBuffer(stripIndex, merged, mergedLen);
 
-    _buildMergedBuffer(merged, mergedLen);
+    if (_callback && mergedLen > 0)
+        _callback(stripIndex, merged, mergedLen);
 
-    if (_callback && mergedLen > 0) {
-        _callback(merged, mergedLen);
-    }
-
-    // Reset pour la prochaine frame
-    _u1Ready = false;
-    _u2Ready = false;
+    su.u1Ready = false;
+    su.u2Ready = false;
 }
 
-// ─── Construction du buffer fusionné selon le mode ───────────────────────────
-void ArtNet::_buildMergedBuffer(uint8_t* merged, uint16_t& mergedLen) {
-    // Offset dans U1 selon le canal de départ
-    uint16_t offsetU1 = _config->dmxStartChannel - 1;
-    uint16_t offsetU2 = _config->universe2StartCh - 1;
+void ArtNet::_buildMergedBuffer(uint8_t idx,
+                                uint8_t* merged,
+                                uint16_t& mergedLen) {
+    StripConfig&   sc = _config->strips[idx];
+    StripUniverse& su = _strips[idx];
 
-    if (_config->universeMode == 0) {
-        // ── Mode Manuel (TouchDesigner) ────────────────────────────────────────
-        // U1 fournit les LEDs 0 → universe2LedStart-1
-        // U2 fournit les LEDs universe2LedStart → ledCount-1
-        uint16_t ledStartU2 = _config->universe2LedStart;
-        uint16_t chU1       = ledStartU2 * 3;
-        uint16_t chU2       = (_config->ledCount - ledStartU2) * 3;
+    uint16_t offsetU1 = sc.dmxStartChannel - 1;
+    uint16_t offsetU2 = sc.universe2StartCh - 1;
+    uint16_t totalCh  = sc.totalChannels();
 
-        // Copie données U1
-        uint16_t availU1 = (_lenU1 > offsetU1) ? _lenU1 - offsetU1 : 0;
-        uint16_t copyU1  = min(chU1, availU1);
-        memcpy(merged, _bufU1 + offsetU1, copyU1);
+    if (sc.universe2 == 0) {
+        // ── Un seul univers ────────────────────────────────────────────────────
+        uint16_t avail = (su.lenU1 > offsetU1) ? su.lenU1 - offsetU1 : 0;
+        uint16_t copy  = min(totalCh, avail);
+        memcpy(merged, su.bufU1 + offsetU1, copy);
+        mergedLen = copy;
+        return;
+    }
 
-        // Copie données U2
-        uint16_t availU2 = (_lenU2 > offsetU2) ? _lenU2 - offsetU2 : 0;
-        uint16_t copyU2  = min(chU2, availU2);
-        memcpy(merged + chU1, _bufU2 + offsetU2, copyU2);
+    switch (sc.universeMode) {
 
-        mergedLen = chU1 + copyU2;
+        case UNIVERSE_MODE_MANUAL: {
+            uint16_t ledStartU2 = sc.universe2LedStart;
+            uint16_t chU1       = ledStartU2 * 3;
+            uint16_t chU2       = (sc.ledCount - ledStartU2) * 3;
+            uint16_t availU1    = (su.lenU1 > offsetU1) ? su.lenU1 - offsetU1 : 0;
+            uint16_t availU2    = (su.lenU2 > offsetU2) ? su.lenU2 - offsetU2 : 0;
+            uint16_t copyU1     = min(chU1, availU1);
+            uint16_t copyU2     = min(chU2, availU2);
+            memcpy(merged,        su.bufU1 + offsetU1, copyU1);
+            memcpy(merged + copyU1, su.bufU2 + offsetU2, copyU2);
+            mergedLen = copyU1 + copyU2;
+            break;
+        }
 
-    } else if (_config->universeMode == 1) {
-        // ── Mode Continuation (QLC+) ───────────────────────────────────────────
-        // U1 : canaux offsetU1 → 511 (max 512-offsetU1 canaux)
-        // U2 : canaux offsetU2 → fin
-        // La LED peut être coupée entre U1 et U2 — on recolle les octets
+        case UNIVERSE_MODE_CONT: {
+            uint16_t chFromU1 = (su.lenU1 > offsetU1) ? su.lenU1 - offsetU1 : 0;
+            uint16_t chFromU2 = (su.lenU2 > offsetU2) ? su.lenU2 - offsetU2 : 0;
+            uint16_t copyU1   = min(chFromU1, totalCh);
+            memcpy(merged, su.bufU1 + offsetU1, copyU1);
+            uint16_t remaining = totalCh - copyU1;
+            uint16_t copyU2    = min(chFromU2, remaining);
+            memcpy(merged + copyU1, su.bufU2 + offsetU2, copyU2);
+            mergedLen = copyU1 + copyU2;
+            break;
+        }
 
-        uint16_t chFromU1 = (_lenU1 > offsetU1) ? _lenU1 - offsetU1 : 0;
-        uint16_t chFromU2 = (_lenU2 > offsetU2) ? _lenU2 - offsetU2 : 0;
-        uint16_t totalCh  = _config->ledCount * 3;
-
-        uint16_t copyU1 = min(chFromU1, totalCh);
-        memcpy(merged, _bufU1 + offsetU1, copyU1);
-
-        uint16_t remaining = totalCh - copyU1;
-        uint16_t copyU2    = min(chFromU2, remaining);
-        memcpy(merged + copyU1, _bufU2 + offsetU2, copyU2);
-
-        mergedLen = copyU1 + copyU2;
-
-    } else {
-        // ── Mode Pixel Aligné (Resolume) ───────────────────────────────────────
-        // U1 : pixels complets seulement (division entière par 3)
-        // Les canaux restants en fin d'U1 sont ignorés (skip)
-        // U2 : repart proprement depuis offsetU2
-
-        uint16_t chFromU1  = (_lenU1 > offsetU1) ? _lenU1 - offsetU1 : 0;
-        uint16_t ledsInU1  = chFromU1 / 3;          // pixel aligné
-        uint16_t copyU1    = ledsInU1 * 3;
-
-        uint16_t ledsInU2  = _config->ledCount - ledsInU1;
-        uint16_t chFromU2  = (_lenU2 > offsetU2) ? _lenU2 - offsetU2 : 0;
-        uint16_t copyU2    = min((uint16_t)(ledsInU2 * 3), chFromU2);
-
-        memcpy(merged, _bufU1 + offsetU1, copyU1);
-        memcpy(merged + copyU1, _bufU2 + offsetU2, copyU2);
-
-        mergedLen = copyU1 + copyU2;
+        case UNIVERSE_MODE_ALIGNED: {
+            uint16_t chFromU1 = (su.lenU1 > offsetU1) ? su.lenU1 - offsetU1 : 0;
+            uint16_t ledsInU1 = chFromU1 / 3;
+            uint16_t copyU1   = ledsInU1 * 3;
+            uint16_t ledsInU2 = sc.ledCount - ledsInU1;
+            uint16_t chFromU2 = (su.lenU2 > offsetU2) ? su.lenU2 - offsetU2 : 0;
+            uint16_t copyU2   = min((uint16_t)(ledsInU2 * 3), chFromU2);
+            memcpy(merged,        su.bufU1 + offsetU1, copyU1);
+            memcpy(merged + copyU1, su.bufU2 + offsetU2, copyU2);
+            mergedLen = copyU1 + copyU2;
+            break;
+        }
     }
 }
 
@@ -190,9 +200,8 @@ uint16_t ArtNet::_getUniverse(uint8_t* data) {
 }
 
 bool ArtNet::isReceiving() {
-    if (_receiving && (millis() - _lastPacket > 2000)) {
+    if (_receiving && (millis() - _lastPacket > 2000))
         _receiving = false;
-    }
     return _receiving;
 }
 

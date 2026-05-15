@@ -15,16 +15,16 @@ void WebServer::begin(Config& config, LedController& leds,
 }
 
 void WebServer::_setupRoutes() {
-    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
-    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Content-Type");
+    DefaultHeaders::Instance().addHeader(
+        "Access-Control-Allow-Origin", "*");
+    DefaultHeaders::Instance().addHeader(
+        "Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    DefaultHeaders::Instance().addHeader(
+        "Access-Control-Allow-Headers", "Content-Type");
 
     _server.onNotFound([](AsyncWebServerRequest* req) {
-        if (req->method() == HTTP_OPTIONS) {
-            req->send(200);
-        } else {
-            req->send(404, "application/json", "{\"error\":\"not found\"}");
-        }
+        if (req->method() == HTTP_OPTIONS) req->send(200);
+        else req->send(404, "application/json", "{\"error\":\"not found\"}");
     });
 
     _server.on("/api/status", HTTP_GET,
@@ -64,7 +64,9 @@ void WebServer::_handleGetStatus(AsyncWebServerRequest* req) {
     doc["wifiState"] = (int)_wifi->getState();
     doc["freeHeap"]  = ESP.getFreeHeap();
     doc["uptime"]    = millis() / 1000;
-    doc["firmware"]  = "1.0.0";
+    doc["firmware"]  = "2.0.0";
+    doc["stripCount"]= _config->data.stripCount;
+
     String out;
     serializeJson(doc, out);
     req->send(200, "application/json", out);
@@ -73,34 +75,39 @@ void WebServer::_handleGetStatus(AsyncWebServerRequest* req) {
 // ─── GET /api/config ──────────────────────────────────────────────────────────
 void WebServer::_handleGetConfig(AsyncWebServerRequest* req) {
     JsonDocument doc;
-    doc["deviceName"]        = _config->data.deviceName;
-    doc["ledCount"]          = _config->data.ledCount;
-    doc["dmxUniverse"]       = _config->data.dmxUniverse;
-    doc["dmxStartChannel"]   = _config->data.dmxStartChannel;
-    doc["dmxMode"]           = _config->data.dmxMode;
-    doc["dmxGroupSize"]      = _config->data.dmxGroupSize;
-    doc["brightness"]        = _config->data.brightness;
-    doc["fpsMax"]            = _config->data.fpsMax;
-    doc["timeoutMs"]         = _config->data.timeoutMs;
 
-    // Multi-univers
-    doc["universe2"]         = _config->data.universe2;
-    doc["universe2StartCh"]  = _config->data.universe2StartCh;
-    doc["universe2LedStart"] = _config->data.universe2LedStart;
-    doc["universeMode"]      = _config->data.universeMode;
+    doc["deviceName"] = _config->data.deviceName;
+    doc["brightness"] = _config->data.brightness;
+    doc["fpsMax"]     = _config->data.fpsMax;
+    doc["timeoutMs"]  = _config->data.timeoutMs;
+    doc["stripCount"] = _config->data.stripCount;
 
-    // Calculs automatiques
-    uint16_t channels = 0;
-    switch (_config->data.dmxMode) {
-        case 0: channels = _config->data.ledCount * 3; break;
-        case 1: channels = (_config->data.ledCount /
-                            _config->data.dmxGroupSize) * 3; break;
-        case 2: channels = 3; break;
+    JsonArray strips = doc["strips"].to<JsonArray>();
+
+    for (uint8_t i = 0; i < MAX_STRIPS; i++) {
+        StripConfig& s = _config->data.strips[i];
+        JsonObject   o = strips.add<JsonObject>();
+
+        o["index"]           = i;
+        o["enabled"]         = s.enabled;
+        o["pin"]             = s.pin;
+        o["name"]            = s.name;
+        o["ledCount"]        = s.ledCount;
+        o["dmxUniverse"]     = s.dmxUniverse;
+        o["dmxStartChannel"] = s.dmxStartChannel;
+        o["dmxMode"]         = s.dmxMode;
+        o["dmxGroupSize"]    = s.dmxGroupSize;
+        o["universe2"]       = s.universe2;
+        o["universe2StartCh"]= s.universe2StartCh;
+        o["universe2LedStart"]=s.universe2LedStart;
+        o["universeMode"]    = s.universeMode;
+
+        // Calculs automatiques
+        o["totalChannels"]   = s.totalChannels();
+        o["lastChannel"]     = s.lastChannel();
+        o["u2LedStartCalc"]  = s.calcUniverse2LedStart();
+        o["u1Skip"]          = s.calcUniverse1Skip();
     }
-    doc["dmxChannelsUsed"]   = channels;
-    doc["dmxLastChannel"]    = _config->data.dmxStartChannel + channels - 1;
-    doc["universe2LedStartCalc"] = _config->calcUniverse2LedStart();
-    doc["universe1Skip"]     = _config->calcUniverse1Skip();
 
     String out;
     serializeJson(doc, out);
@@ -108,20 +115,12 @@ void WebServer::_handleGetConfig(AsyncWebServerRequest* req) {
 }
 
 // ─── POST /api/config ─────────────────────────────────────────────────────────
-void WebServer::_handlePostConfig(AsyncWebServerRequest* req, JsonVariant& json) {
+void WebServer::_handlePostConfig(AsyncWebServerRequest* req,
+                                   JsonVariant& json) {
+    // Config globale
     if (json["deviceName"].is<const char*>())
         strlcpy(_config->data.deviceName,
                 json["deviceName"], sizeof(_config->data.deviceName));
-    if (json["ledCount"].is<int>())
-        _config->data.ledCount = json["ledCount"];
-    if (json["dmxUniverse"].is<int>())
-        _config->data.dmxUniverse = json["dmxUniverse"];
-    if (json["dmxStartChannel"].is<int>())
-        _config->data.dmxStartChannel = json["dmxStartChannel"];
-    if (json["dmxMode"].is<int>())
-        _config->data.dmxMode = json["dmxMode"];
-    if (json["dmxGroupSize"].is<int>())
-        _config->data.dmxGroupSize = json["dmxGroupSize"];
     if (json["brightness"].is<int>()) {
         _config->data.brightness = json["brightness"];
         _leds->setBrightness(_config->data.brightness);
@@ -130,23 +129,52 @@ void WebServer::_handlePostConfig(AsyncWebServerRequest* req, JsonVariant& json)
         _config->data.fpsMax = json["fpsMax"];
     if (json["timeoutMs"].is<int>())
         _config->data.timeoutMs = json["timeoutMs"];
+    if (json["stripCount"].is<int>())
+        _config->data.stripCount = constrain(
+            (int)json["stripCount"], 1, MAX_STRIPS);
 
-    // Multi-univers
-    if (json["universe2"].is<int>())
-        _config->data.universe2 = json["universe2"];
-    if (json["universe2StartCh"].is<int>())
-        _config->data.universe2StartCh = json["universe2StartCh"];
-    if (json["universe2LedStart"].is<int>())
-        _config->data.universe2LedStart = json["universe2LedStart"];
-    if (json["universeMode"].is<int>())
-        _config->data.universeMode = json["universeMode"];
+    // Config des bandes
+    if (json["strips"].is<JsonArray>()) {
+        for (JsonVariant sv : json["strips"].as<JsonArray>()) {
+            int idx = sv["index"] | -1;
+            if (idx < 0 || idx >= MAX_STRIPS) continue;
+
+            StripConfig& s = _config->data.strips[idx];
+
+            if (sv["enabled"].is<bool>())
+                s.enabled = sv["enabled"];
+            if (sv["pin"].is<int>())
+                s.pin = sv["pin"];
+            if (sv["name"].is<const char*>())
+                strlcpy(s.name, sv["name"], sizeof(s.name));
+            if (sv["ledCount"].is<int>())
+                s.ledCount = sv["ledCount"];
+            if (sv["dmxUniverse"].is<int>())
+                s.dmxUniverse = sv["dmxUniverse"];
+            if (sv["dmxStartChannel"].is<int>())
+                s.dmxStartChannel = sv["dmxStartChannel"];
+            if (sv["dmxMode"].is<int>())
+                s.dmxMode = sv["dmxMode"];
+            if (sv["dmxGroupSize"].is<int>())
+                s.dmxGroupSize = sv["dmxGroupSize"];
+            if (sv["universe2"].is<int>())
+                s.universe2 = sv["universe2"];
+            if (sv["universe2StartCh"].is<int>())
+                s.universe2StartCh = sv["universe2StartCh"];
+            if (sv["universe2LedStart"].is<int>())
+                s.universe2LedStart = sv["universe2LedStart"];
+            if (sv["universeMode"].is<int>())
+                s.universeMode = sv["universeMode"];
+        }
+    }
 
     _config->save();
     req->send(200, "application/json", "{\"ok\":true}");
 }
 
 // ─── POST /api/wifi ───────────────────────────────────────────────────────────
-void WebServer::_handlePostWifi(AsyncWebServerRequest* req, JsonVariant& json) {
+void WebServer::_handlePostWifi(AsyncWebServerRequest* req,
+                                 JsonVariant& json) {
     if (!json["ssid"].is<const char*>()) {
         req->send(400, "application/json", "{\"error\":\"ssid requis\"}");
         return;
@@ -163,31 +191,48 @@ void WebServer::_handlePostWifi(AsyncWebServerRequest* req, JsonVariant& json) {
 }
 
 // ─── POST /api/test ───────────────────────────────────────────────────────────
-void WebServer::_handlePostTest(AsyncWebServerRequest* req, JsonVariant& json) {
-    String mode = json["mode"] | "color";
+void WebServer::_handlePostTest(AsyncWebServerRequest* req,
+                                 JsonVariant& json) {
+    int    stripIdx = json["strip"] | 0;
+    String mode     = json["mode"]  | "color";
+
+    if (stripIdx < 0 || stripIdx >= MAX_STRIPS) {
+        req->send(400, "application/json", "{\"error\":\"strip invalide\"}");
+        return;
+    }
+
+    StripController& strip = _leds->getStrip(stripIdx);
+
     if (mode == "color") {
         uint8_t r = json["r"] | 255;
         uint8_t g = json["g"] | 0;
         uint8_t b = json["b"] | 0;
-        _leds->setAll(r, g, b);
+        strip.setAll(r, g, b);
         _leds->show();
     } else if (mode == "rainbow") {
-        _effects->setEffect(EFFECT_RAINBOW);
+        _effects->setEffect(stripIdx, EFFECT_RAINBOW);
     } else if (mode == "off") {
-        _leds->clear();
+        strip.clear();
         _leds->show();
     }
+
     req->send(200, "application/json", "{\"ok\":true}");
 }
 
 // ─── POST /api/effect ─────────────────────────────────────────────────────────
-void WebServer::_handlePostEffect(AsyncWebServerRequest* req, JsonVariant& json) {
-    int type = json["type"] | 1;
-    _effects->setEffect((EffectType)type);
-    if (json["r"].is<int>())
-        _effects->setColor(json["r"], json["g"], json["b"]);
-    if (json["speed"].is<int>())
-        _effects->setSpeed(json["speed"]);
+void WebServer::_handlePostEffect(AsyncWebServerRequest* req,
+                                   JsonVariant& json) {
+    int stripIdx = json["strip"] | 0;
+    int type     = json["type"]  | 1;
+
+    if (stripIdx >= 0 && stripIdx < MAX_STRIPS) {
+        _effects->setEffect(stripIdx, (EffectType)type);
+        if (json["r"].is<int>())
+            _effects->setColor(stripIdx, json["r"], json["g"], json["b"]);
+        if (json["speed"].is<int>())
+            _effects->setSpeed(stripIdx, json["speed"]);
+    }
+
     req->send(200, "application/json", "{\"ok\":true}");
 }
 

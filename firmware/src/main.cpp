@@ -15,29 +15,31 @@ LedController leds;
 Effects       effects;
 WebServer     webServer;
 
-// ─── État du système ──────────────────────────────────────────────────────────
-bool     dmxActive   = false;
-uint32_t lastDmxTime = 0;
+// ─── État DMX par bande ───────────────────────────────────────────────────────
+bool     dmxActive[MAX_STRIPS]   = { false };
+uint32_t lastDmxTime[MAX_STRIPS] = { 0 };
 
 // ─── Callback Art-Net ─────────────────────────────────────────────────────────
-// Appelé par ArtNet avec le buffer déjà fusionné (U1+U2 si multi-univers)
-void onArtNetData(uint8_t* data, uint16_t length) {
-    lastDmxTime = millis();
+// Appelé pour chaque bande avec son buffer fusionné
+void onArtNetData(uint8_t stripIndex, uint8_t* data, uint16_t length) {
+    if (stripIndex >= MAX_STRIPS) return;
 
-    if (!dmxActive) {
-        Serial.println("[Main] Signal Art-Net reçu → mode DMX");
-        dmxActive = true;
+    lastDmxTime[stripIndex] = millis();
+
+    if (!dmxActive[stripIndex]) {
+        Serial.printf("[Main] Signal Art-Net reçu → bande %d active\n",
+                      stripIndex + 1);
+        dmxActive[stripIndex] = true;
     }
 
-    leds.applyDMX(data, length);
-    leds.show();
+    leds.getStrip(stripIndex).applyDMX(data, length);
 }
 
 // ─── Setup ────────────────────────────────────────────────────────────────────
 void setup() {
     Serial.begin(115200);
     delay(500);
-    Serial.println("\n=== LED Controller démarrage ===");
+    Serial.println("\n=== LED Controller multi-bandes ===");
 
     // 1. Config
     config.load();
@@ -46,18 +48,27 @@ void setup() {
     // 2. LEDs
     leds.begin(config.data);
 
-    // 3. Effets autonomes
-    effects.begin(FastLED.leds(), config.data.ledCount);
-    effects.setEffect(EFFECT_BREATHING);
-    effects.setColor(0, 0, 50);  // bleu pendant connexion Wi-Fi
+    // 3. Effets — passe les buffers de chaque bande active
+    CRGB*    ledBuffers[MAX_STRIPS];
+    uint16_t ledCounts[MAX_STRIPS];
+    uint8_t  activeCount = 0;
+
+    for (uint8_t i = 0; i < MAX_STRIPS; i++) {
+        if (!config.data.strips[i].enabled) continue;
+        ledBuffers[activeCount] = leds.getStrip(i).leds;
+        ledCounts[activeCount]  = leds.getStrip(i).ledCount;
+        activeCount++;
+    }
+
+    effects.begin(ledBuffers, ledCounts, activeCount);
 
     // 4. Wi-Fi
     wifiManager.begin(config.data);
 
-    // 5. Art-Net — écoute 1 ou 2 univers selon config
+    // 5. Art-Net
     artnet.begin(config.data, onArtNetData);
 
-    // 6. Serveur web local
+    // 6. Serveur web
     webServer.begin(config, leds, effects, wifiManager);
 
     Serial.println("[Main] Démarrage terminé");
@@ -68,22 +79,38 @@ void loop() {
     // Wi-Fi
     wifiManager.loop();
 
-    // Gestion timeout multi-univers (synchro U1+U2)
+    // Timeout synchro multi-univers
     artnet.loop();
 
-    // Timeout signal DMX → mode autonome
-    if (dmxActive) {
-        if (millis() - lastDmxTime > config.data.timeoutMs) {
-            Serial.println("[Main] Signal perdu → mode autonome");
-            dmxActive = false;
-            effects.setEffect(EFFECT_BREATHING);
-            effects.setColor(50, 25, 0);  // orange en mode autonome
+    bool anyDmxActive = false;
+
+    for (uint8_t i = 0; i < MAX_STRIPS; i++) {
+        if (!config.data.strips[i].enabled) continue;
+
+        // Timeout signal DMX → mode autonome par bande
+        if (dmxActive[i]) {
+            if (millis() - lastDmxTime[i] > config.data.timeoutMs) {
+                Serial.printf("[Main] Bande %d → mode autonome\n", i + 1);
+                dmxActive[i] = false;
+                effects.setEffect(i, EFFECT_BREATHING);
+                effects.setColor(i, 50, 25, 0);  // orange
+            } else {
+                anyDmxActive = true;
+            }
         }
     }
 
-    // Effets autonomes si pas de DMX
-    if (!dmxActive) {
-        effects.loop();
+    // Effets autonomes sur les bandes sans signal DMX
+    bool needShow = false;
+    for (uint8_t i = 0; i < MAX_STRIPS; i++) {
+        if (!config.data.strips[i].enabled) continue;
+        if (!dmxActive[i]) {
+            effects.getStrip(i).loop();
+            needShow = true;
+        }
+    }
+
+    if (needShow) {
         leds.show();
     }
 
