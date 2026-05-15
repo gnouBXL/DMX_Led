@@ -1,6 +1,8 @@
 #pragma once
 #include <Arduino.h>
 #include <ESPAsyncWebServer.h>
+#include <AsyncJson.h>
+#include <LittleFS.h>
 #include <ArduinoJson.h>
 #include "../config/Config.h"
 #include "../leds/LedController.h"
@@ -14,24 +16,17 @@ public:
 
 private:
     AsyncWebServer _server{80};
-
     Config*        _config  = nullptr;
     LedController* _leds    = nullptr;
     Effects*       _effects = nullptr;
     WiFiManager*   _wifi    = nullptr;
 
     void _setupRoutes();
-
-    // Routes API
     void _handleGetStatus(AsyncWebServerRequest* req);
     void _handleGetConfig(AsyncWebServerRequest* req);
-    void _handlePostConfig(AsyncWebServerRequest* req,
-                           JsonDocument& body);
-    void _handlePostWifi(AsyncWebServerRequest* req,
-                         JsonDocument& body);
-    void _handlePostTest(AsyncWebServerRequest* req,
-                         JsonDocument& body);
-    void _handlePostEffect(AsyncWebServerRequest* req,
-                           JsonDocument& body);
+    void _handlePostConfig(AsyncWebServerRequest* req, JsonVariant& json);
+    void _handlePostWifi(AsyncWebServerRequest* req, JsonVariant& json);
+    void _handlePostTest(AsyncWebServerRequest* req, JsonVariant& json);
+    void _handlePostEffect(AsyncWebServerRequest* req, JsonVariant& json);
     void _handleReboot(AsyncWebServerRequest* req);
 };
