@@ -1,1 +1,15 @@
+# Node
 node_modules/
+dist/
+.env
+
+# PlatformIO
+firmware/.pio/
+firmware/.vscode/
+
+# Système Mac
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
