@@ -240,4 +240,8 @@ Pour un déploiement sur Raspberry Pi, remplacer `localhost` par l'IP du Pi.
 
 ## Licence
 
-MIT — libre d'utilisation, modification et distribution.
+MIT avec attribution obligatoire — © 2026 Laurent Stevens
+
+Libre d'utilisation, modification et distribution. Toute utilisation publique
+ou dérivée doit citer l'auteur original : **Laurent Stevens — DMX LED Controller**
+https://github.com/gnouBXL/DMX_Led
