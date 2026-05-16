@@ -3,6 +3,7 @@ import { useStore } from '../store/useStore'
 import BarCard from '../components/BarCard'
 import LedVisualizer from '../components/LedVisualizer'
 import BarConfig from './BarConfig'
+import TouchDesignerSetup from './TouchDesignerSetup'
 
 export default function Dashboard() {
   const bars = useStore(s => s.bars)
@@ -27,14 +28,14 @@ export default function Dashboard() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          {['dashboard', 'visualizer'].map(t => (
+          {['dashboard', 'visualizer', 'touchdesigner'].map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
               padding: '6px 14px', borderRadius: 6, border: 'none',
               fontSize: 12, fontWeight: 500,
               background: tab === t ? '#2563eb' : '#1e1e1e',
               color: tab === t ? '#fff' : '#a0a0a0',
             }}>
-              {t === 'dashboard' ? 'Dashboard' : 'Visualiseur'}
+              {t === 'dashboard' ? 'Dashboard' : t === 'visualizer' ? 'Visualiseur' : '🎛 TouchDesigner'}
             </button>
           ))}
         </div>
@@ -74,13 +75,17 @@ export default function Dashboard() {
         </div>
       )}
 
-      {tab === 'visualizer' && (
+        {tab === 'visualizer' && (
         <div style={{ background: '#141414', border: '1px solid #2a2a2a', borderRadius: 10, padding: 20 }}>
           <h2 style={{ fontSize: 13, color: '#555', marginBottom: 16, fontWeight: 500 }}>
             VISUALISATION TEMPS RÉEL
           </h2>
           <LedVisualizer bars={bars} />
         </div>
+      )}
+
+      {tab === 'touchdesigner' && (
+        <TouchDesignerSetup />
       )}
     </div>
   )

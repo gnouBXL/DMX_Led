@@ -11,8 +11,8 @@
   .sub { font-size: 11px; color: #555; margin-bottom: 16px; }
   .card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px; padding: 14px; margin-bottom: 10px; }
   .card-title { font-size: 11px; font-weight: 500; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
-  .row { display: flex; gap: 10px; margin-bottom: 8px; }
-  .field { flex: 1; }
+  .row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .field { flex: 1; min-width: 80px; }
   label { display: block; font-size: 10px; color: #555; margin-bottom: 3px; }
   input, select { width: 100%; background: #111; border: 1px solid #2a2a2a; border-radius: 6px; color: #e0e0e0; padding: 6px 8px; font-size: 12px; }
   .btn { padding: 7px 14px; border-radius: 6px; border: none; font-size: 12px; cursor: pointer; font-weight: 500; }
@@ -35,15 +35,10 @@
   .alert-ok { background: #14532d; color: #86efac; }
   .alert-err { background: #7f1d1d; color: #fca5a5; }
   .help-btn { background: none; border: 1px solid #333; border-radius: 4px; color: #555; font-size: 10px; padding: 2px 7px; cursor: pointer; margin-left: 6px; }
-
-  /* Tabs bandes */
   .tabs { display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap; }
   .tab { padding: 5px 12px; border-radius: 6px; border: 1px solid #2a2a2a; font-size: 11px; cursor: pointer; background: #111; color: #666; }
   .tab.active { background: #2563eb; color: #fff; border-color: #2563eb; }
   .tab.enabled { color: #aaa; }
-  .tab.disabled-tab { color: #333; }
-
-  /* Strip card */
   .strip-panel { display: none; }
   .strip-panel.active { display: block; }
   .strip-enabled-toggle { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
@@ -53,16 +48,15 @@
   .toggle input:checked + .toggle-slider { background: #2563eb; }
   .toggle-slider:before { content: ''; position: absolute; width: 14px; height: 14px; left: 2px; top: 2px; background: #fff; border-radius: 50%; transition: transform 0.2s; }
   .toggle input:checked + .toggle-slider:before { transform: translateX(14px); }
-
-  /* Résumé canaux */
   .channel-summary { background: #0f1a2e; border: 1px solid #1e3a5f; border-radius: 8px; padding: 10px 12px; margin-top: 8px; }
   .ch-row { display: flex; justify-content: space-between; font-size: 11px; padding: 2px 0; }
   .ch-val { color: #60a5fa; font-family: monospace; }
   .ch-val-u2 { color: #86efac; font-family: monospace; }
-
-  /* Schéma GPIO */
+  .artnet-block { background: #0d1a0d; border: 1px solid #1a3a1a; border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; }
+  .artnet-title { font-size: 10px; color: #4ade80; margin-bottom: 6px; font-weight: 500; }
+  .artnet-abs { font-size: 10px; color: #555; margin-top: 4px; font-family: monospace; }
+  .artnet-abs span { color: #4ade80; }
   .gpio-schema { background: #111; border-radius: 8px; padding: 12px; margin-top: 10px; }
-  .gpio-title { font-size: 11px; color: #555; margin-bottom: 8px; }
   .gpio-board { display: flex; gap: 8px; justify-content: center; }
   .gpio-col { display: flex; flex-direction: column; gap: 2px; }
   .gpio-col-l { align-items: flex-end; }
@@ -79,11 +73,9 @@
   .dot-avoid { background: #ca8a04; }
   .dot-free { background: #222; border: 1px solid #333; }
   .gpio-chip { width: 60px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #555; text-align: center; padding: 4px; min-height: 220px; }
-
-  /* Modal aide univers */
-  .modal-bg { display: none; background: rgba(0,0,0,0.85); padding: 16px; margin: -16px; }
+  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 100; overflow-y: auto; padding: 20px; }
   .modal-bg.open { display: block; }
-  .modal { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px; padding: 14px; }
+  .modal { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px; padding: 14px; max-width: 500px; margin: 0 auto; }
   .modal h3 { font-size: 13px; font-weight: 500; color: #fff; margin-bottom: 10px; }
   .modal-close { float: right; background: none; border: none; color: #555; font-size: 18px; cursor: pointer; }
   .mode-block { border-radius: 6px; padding: 10px; margin-bottom: 8px; }
@@ -98,8 +90,6 @@
   .u2s { background: #14532d; display: flex; align-items: center; justify-content: center; font-size: 9px; color: #86efac; flex: 2; }
   .sks { background: #2a1a1a; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #555; flex: 0.4; }
   .cts { background: #3b1818; display: flex; align-items: center; justify-content: center; font-size: 9px; color: #f87171; flex: 0.4; }
-
-  /* Test couleur */
   .color-preview { width: 32px; height: 32px; border-radius: 5px; border: 1px solid #333; flex-shrink: 0; }
 </style>
 </head>
@@ -148,13 +138,8 @@
 <!-- Bandes LED -->
 <div class="card">
   <div class="card-title">Bandes LED</div>
-
-  <!-- Tabs -->
   <div class="tabs" id="strip-tabs"></div>
-
-  <!-- Panels par bande -->
   <div id="strip-panels"></div>
-
   <div class="alert" id="cfg-alert"></div>
   <br>
   <button class="btn btn-primary" onclick="saveConfig()">Enregistrer tout</button>
@@ -164,22 +149,22 @@
 <div class="card">
   <div class="card-title">Branchement GPIO — ESP32-S3 DevKitC-1</div>
   <div class="gpio-schema">
-    <div class="gpio-title">Les pins vertes correspondent aux bandes actives</div>
+    <div style="font-size:10px;color:#555;margin-bottom:8px;">Les pins bleues correspondent aux bandes actives</div>
     <div class="gpio-board">
       <div class="gpio-col gpio-col-l" id="gpio-left"></div>
       <div class="gpio-chip">ESP32<br>S3</div>
       <div class="gpio-col gpio-col-r" id="gpio-right"></div>
     </div>
-    <div style="margin-top:8px; display:flex; gap:12px; flex-wrap:wrap;">
-      <span style="font-size:9px; color:#16a34a;">● Data LED</span>
-      <span style="font-size:9px; color:#2563eb;">● Bande active</span>
-      <span style="font-size:9px; color:#dc2626;">● +5V</span>
-      <span style="font-size:9px; color:#444;">● GND</span>
-      <span style="font-size:9px; color:#ca8a04;">● À éviter</span>
+    <div style="margin-top:8px;display:flex;gap:12px;flex-wrap:wrap;">
+      <span style="font-size:9px;color:#16a34a;">● Data LED</span>
+      <span style="font-size:9px;color:#2563eb;">● Bande active</span>
+      <span style="font-size:9px;color:#dc2626;">● +5V</span>
+      <span style="font-size:9px;color:#444;">● GND</span>
+      <span style="font-size:9px;color:#ca8a04;">● À éviter</span>
     </div>
   </div>
-  <div style="margin-top:10px; font-size:11px; color:#555; line-height:1.6;">
-    Câblage par bande : DATA → GPIO via résistance 330Ω · +5V et GND via alimentation externe · GND alimentation relié au GND ESP32
+  <div style="margin-top:10px;font-size:11px;color:#555;line-height:1.6;">
+    Câblage : DATA → GPIO via résistance 330Ω · +5V et GND via alimentation externe · GND alimentation relié au GND ESP32
   </div>
 </div>
 
@@ -187,22 +172,10 @@
 <div class="card">
   <div class="card-title">Test LEDs</div>
   <div class="row" style="align-items:flex-end;">
-    <div class="field">
-      <label>Bande</label>
-      <select id="t-strip"></select>
-    </div>
-    <div class="field">
-      <label>Rouge</label>
-      <input type="number" id="t-r" min="0" max="255" value="255">
-    </div>
-    <div class="field">
-      <label>Vert</label>
-      <input type="number" id="t-g" min="0" max="255" value="0">
-    </div>
-    <div class="field">
-      <label>Bleu</label>
-      <input type="number" id="t-b" min="0" max="255" value="0">
-    </div>
+    <div class="field"><label>Bande</label><select id="t-strip"></select></div>
+    <div class="field"><label>Rouge</label><input type="number" id="t-r" min="0" max="255" value="255"></div>
+    <div class="field"><label>Vert</label><input type="number" id="t-g" min="0" max="255" value="0"></div>
+    <div class="field"><label>Bleu</label><input type="number" id="t-b" min="0" max="255" value="0"></div>
     <div class="color-preview" id="cprev" style="background:red;"></div>
   </div>
   <div class="btn-row" style="margin-top:8px;">
@@ -237,24 +210,26 @@
   <div class="modal">
     <button class="modal-close" onclick="closeHelp()">×</button>
     <h3>Guide multi-univers</h3>
-    <p style="font-size:11px;color:#666;margin-bottom:12px;">Une bande de 300 LEDs Full Pixel = 900 canaux. Un univers = 512 canaux max. Il faut 2 univers.</p>
+    <p style="font-size:11px;color:#666;margin-bottom:12px;">
+      Une bande de 300 LEDs Full Pixel = 900 canaux. Un univers = 512 canaux max. Il faut 2 univers.
+    </p>
     <div class="mode-block mode-td">
       <div class="mode-title">Manuel — TouchDesigner</div>
       <div class="mode-soft">DMX Fixture POP</div>
       <div class="ubar"><div class="u1s">U1 · LEDs 1→170</div><div class="u2s">U2 · LEDs 171→300</div></div>
-      <div class="mode-desc">Tu définis toi-même dans TD la LED de départ dans U2. Configure ici le même numéro.</div>
+      <div class="mode-desc">Tu définis toi-même dans TD la LED de départ dans U2.</div>
     </div>
     <div class="mode-block mode-qlc">
       <div class="mode-title">Continuation — QLC+ · grandMA</div>
       <div class="mode-soft">Découpage automatique strict</div>
       <div class="ubar"><div class="u1s">U1 ch.1→512</div><div class="cts">✂</div><div class="u2s">U2 ch.1→388</div></div>
-      <div class="mode-desc">Les canaux continuent. Une LED peut être coupée entre U1 (R+G) et U2 (B). Le firmware recolle automatiquement.</div>
+      <div class="mode-desc">Les canaux continuent. Une LED peut être coupée entre U1 et U2. Le firmware recolle automatiquement.</div>
     </div>
     <div class="mode-block mode-res">
       <div class="mode-title">Pixel aligné — Resolume</div>
       <div class="mode-soft">Arena · Avenue</div>
       <div class="ubar"><div class="u1s">U1 ch.1→510</div><div class="sks">skip</div><div class="u2s">U2 ch.1→390</div></div>
-      <div class="mode-desc">R, G, B d'un même pixel restent dans le même univers. 1-2 canaux sautés en fin U1. Firmware ignore automatiquement.</div>
+      <div class="mode-desc">R, G, B d'un même pixel restent dans le même univers. 1-2 canaux sautés en fin U1.</div>
     </div>
     <button class="btn btn-secondary" onclick="closeHelp()" style="width:100%;margin-top:8px;font-size:11px;">Fermer</button>
   </div>
@@ -267,6 +242,7 @@ const NUM_STRIPS = 4;
 let cfg = null;
 let activeTab = 0;
 
+// ── API ───────────────────────────────────────────────────────────────────────
 const api = (path, method='GET', body=null) => {
   const o = {method, headers:{'Content-Type':'application/json'}};
   if (body) o.body = JSON.stringify(body);
@@ -281,61 +257,33 @@ const showAlert = (id, msg, ok) => {
   setTimeout(() => el.style.display='none', 3000);
 };
 
+// ── Conversion Art-Net ────────────────────────────────────────────────────────
+function toAbsolute(net, subnet, universe) {
+  return (parseInt(net)||0) * 256 + (parseInt(subnet)||0) * 16 + (parseInt(universe)||0);
+}
+
+function fromAbsolute(abs) {
+  abs = parseInt(abs) || 0;
+  return {
+    net:      Math.floor(abs / 256),
+    subnet:   Math.floor((abs % 256) / 16),
+    universe: abs % 16
+  };
+}
+
+function absLabel(net, subnet, univ) {
+  const abs = toAbsolute(net, subnet, univ);
+  return `Net${net} · Sub${subnet} · U${univ} → absolu : ${abs}`;
+}
+
 // ── Aide ──────────────────────────────────────────────────────────────────────
 function openHelp()  { document.getElementById('help-modal').classList.add('open'); }
 function closeHelp() { document.getElementById('help-modal').classList.remove('open'); }
 
-// ── Tabs ──────────────────────────────────────────────────────────────────────
-function buildTabs() {
-  const tabs = document.getElementById('strip-tabs');
-  const panels = document.getElementById('strip-panels');
-  tabs.innerHTML = '';
-  panels.innerHTML = '';
-
-  for (let i = 0; i < NUM_STRIPS; i++) {
-    const s = cfg.strips[i];
-    const tab = document.createElement('div');
-    tab.className = 'tab ' + (s.enabled ? 'enabled' : 'disabled-tab') + (i===activeTab?' active':'');
-    tab.textContent = s.name || ('Bande ' + (i+1));
-    tab.onclick = () => selectTab(i);
-    tabs.appendChild(tab);
-
-    const panel = document.createElement('div');
-    panel.className = 'strip-panel' + (i===activeTab?' active':'');
-    panel.id = 'panel-' + i;
-    panel.innerHTML = buildStripPanel(i, s);
-    panels.appendChild(panel);
-  }
-
-  // Select test
-  const sel = document.getElementById('t-strip');
-  sel.innerHTML = '';
-  for (let i = 0; i < NUM_STRIPS; i++) {
-    if (!cfg.strips[i].enabled) continue;
-    const o = document.createElement('option');
-    o.value = i;
-    o.textContent = cfg.strips[i].name || ('Bande ' + (i+1));
-    sel.appendChild(o);
-  }
-
-  updateGPIOSchema();
-}
-
-function selectTab(i) {
-  activeTab = i;
-  document.querySelectorAll('.tab').forEach((t,idx) => {
-    t.classList.toggle('active', idx === i);
-  });
-  document.querySelectorAll('.strip-panel').forEach((p,idx) => {
-    p.classList.toggle('active', idx === i);
-  });
-}
-
-// ── Panel d'une bande ─────────────────────────────────────────────────────────
+// ── Construction du panel d'une bande ─────────────────────────────────────────
 function buildStripPanel(i, s) {
-  const ch = calcChannels(s);
-  const needU2 = ch > (512 - s.dmxStartChannel + 1);
-  const u2warn = needU2 && s.universe2 === 0;
+  const u1 = fromAbsolute(s.dmxUniverse);
+  const u2 = fromAbsolute(s.universe2);
 
   return `
   <div class="strip-enabled-toggle">
@@ -343,22 +291,33 @@ function buildStripPanel(i, s) {
       <input type="checkbox" id="s${i}-en" ${s.enabled?'checked':''} onchange="onEnableChange(${i})">
       <span class="toggle-slider"></span>
     </label>
-    <span style="font-size:12px;color:${s.enabled?'#e0e0e0':'#444'};" id="s${i}-en-label">${s.enabled?'Active':'Inactive'}</span>
+    <span style="font-size:12px;color:${s.enabled?'#e0e0e0':'#444'};" id="s${i}-en-label">
+      ${s.enabled?'Active':'Inactive'}
+    </span>
   </div>
 
   <div id="s${i}-fields" style="${s.enabled?'':'opacity:0.3;pointer-events:none'}">
+
+    <!-- Nom + GPIO -->
     <div class="row">
-      <div class="field"><label>Nom</label><input id="s${i}-name" value="${s.name}" oninput="updateTab(${i})"></div>
       <div class="field">
-        <label>GPIO (pin data)</label>
+        <label>Nom</label>
+        <input id="s${i}-name" value="${s.name}" oninput="updateTab(${i})">
+      </div>
+      <div class="field">
+        <label>GPIO</label>
         <select id="s${i}-pin" onchange="updateGPIOSchema()">
-          ${PINS.map(p=>`<option value="${p}" ${s.pin===p?'selected':''}>${p} — ${PIN_LABELS[p]||'GPIO '+p}</option>`).join('')}
+          ${PINS.map(p=>`<option value="${p}" ${s.pin===p?'selected':''}>${p} — ${PIN_LABELS[p]}</option>`).join('')}
         </select>
       </div>
     </div>
 
+    <!-- LEDs + Mode DMX -->
     <div class="row">
-      <div class="field"><label>Nombre de LEDs</label><input type="number" id="s${i}-leds" value="${s.ledCount}" min="1" max="300" oninput="updateCalc(${i})"></div>
+      <div class="field">
+        <label>Nombre de LEDs</label>
+        <input type="number" id="s${i}-leds" value="${s.ledCount}" min="1" max="300" oninput="updateCalc(${i})">
+      </div>
       <div class="field">
         <label>Mode DMX</label>
         <select id="s${i}-mode" onchange="updateCalc(${i})">
@@ -369,22 +328,47 @@ function buildStripPanel(i, s) {
       </div>
     </div>
 
+    <!-- Groupe (mode 1 uniquement) -->
     <div class="row" id="s${i}-grp-row" style="${s.dmxMode===1?'':'display:none'}">
-      <div class="field"><label>LEDs par groupe</label><input type="number" id="s${i}-grp" value="${s.dmxGroupSize}" min="1" max="300" oninput="updateCalc(${i})"></div>
+      <div class="field">
+        <label>LEDs par groupe</label>
+        <input type="number" id="s${i}-grp" value="${s.dmxGroupSize}" min="1" max="300" oninput="updateCalc(${i})">
+      </div>
       <div class="field"></div>
     </div>
 
-    <div class="row">
-      <div class="field"><label>Univers DMX</label><input type="number" id="s${i}-univ" value="${s.dmxUniverse}" min="0" max="32767" oninput="updateCalc(${i})"></div>
-      <div class="field"><label>Canal de départ</label><input type="number" id="s${i}-ch" value="${s.dmxStartChannel}" min="1" max="512" oninput="updateCalc(${i})"></div>
+    <!-- Art-Net Univers 1 -->
+    <div class="artnet-block">
+      <div class="artnet-title">Art-Net — Univers principal</div>
+      <div class="row">
+        <div class="field">
+          <label>Net (0-127)</label>
+          <input type="number" id="s${i}-net" value="${u1.net}" min="0" max="127" oninput="updateCalc(${i})">
+        </div>
+        <div class="field">
+          <label>Subnet (0-15)</label>
+          <input type="number" id="s${i}-subnet" value="${u1.subnet}" min="0" max="15" oninput="updateCalc(${i})">
+        </div>
+        <div class="field">
+          <label>Universe (0-15)</label>
+          <input type="number" id="s${i}-univnum" value="${u1.universe}" min="0" max="15" oninput="updateCalc(${i})">
+        </div>
+        <div class="field">
+          <label>Canal départ</label>
+          <input type="number" id="s${i}-ch" value="${s.dmxStartChannel}" min="1" max="512" oninput="updateCalc(${i})">
+        </div>
+      </div>
+      <div class="artnet-abs" id="s${i}-abs1">
+        Univers absolu : <span>${s.dmxUniverse}</span>
+      </div>
     </div>
 
     <div id="s${i}-calc" class="calc">—</div>
-    ${u2warn ? `<div class="warn">⚠ Dépasse 512 canaux — activer le 2ème univers ci-dessous</div>` : ''}
 
+    <!-- Multi-univers -->
     <div class="sep">
       <div style="display:flex;align-items:center;margin-bottom:8px;">
-        <span style="font-size:11px;font-weight:500;color:#666;text-transform:uppercase;letter-spacing:0.05em;">Multi-univers</span>
+        <span style="font-size:11px;font-weight:500;color:#666;text-transform:uppercase;letter-spacing:0.05em;">2ème univers</span>
         <button class="help-btn" onclick="openHelp()">? aide</button>
       </div>
 
@@ -397,29 +381,55 @@ function buildStripPanel(i, s) {
             <option value="2" ${s.universeMode===2?'selected':''}>Pixel aligné (Resolume)</option>
           </select>
         </div>
-        <div class="field">
-          <label>2ème univers (0 = désactivé)</label>
-          <input type="number" id="s${i}-u2" value="${s.universe2}" min="0" max="32767" oninput="updateCalc(${i})">
+      </div>
+
+      <!-- Art-Net Univers 2 -->
+      <div class="artnet-block" style="border-color:#1a3a1a;">
+        <div class="artnet-title" style="color:#4ade80;">Art-Net — 2ème univers (0/0/0 = désactivé)</div>
+        <div class="row">
+          <div class="field">
+            <label>Net (0-127)</label>
+            <input type="number" id="s${i}-u2net" value="${u2.net}" min="0" max="127" oninput="updateCalc(${i})">
+          </div>
+          <div class="field">
+            <label>Subnet (0-15)</label>
+            <input type="number" id="s${i}-u2subnet" value="${u2.subnet}" min="0" max="15" oninput="updateCalc(${i})">
+          </div>
+          <div class="field">
+            <label>Universe (0-15)</label>
+            <input type="number" id="s${i}-u2univnum" value="${u2.universe}" min="0" max="15" oninput="updateCalc(${i})">
+          </div>
+          <div class="field">
+            <label>Canal départ U2</label>
+            <input type="number" id="s${i}-u2ch" value="${s.universe2StartCh}" min="1" max="512" oninput="updateCalc(${i})">
+          </div>
+        </div>
+        <div class="artnet-abs" id="s${i}-abs2">
+          Univers absolu : <span>${s.universe2}</span>
         </div>
       </div>
 
       <div id="s${i}-u2fields" style="${s.universe2>0?'':'display:none'}">
-        <div class="row">
-          <div class="field"><label>Canal départ U2</label><input type="number" id="s${i}-u2ch" value="${s.universe2StartCh}" min="1" max="512" oninput="updateCalc(${i})"></div>
-          <div class="field" id="s${i}-u2ls-field" style="${s.universeMode===0?'':'display:none'}">
+        <div class="row" id="s${i}-u2ls-field" style="${s.universeMode===0?'':'display:none'}">
+          <div class="field">
             <label>LED départ dans U2 (manuel)</label>
             <input type="number" id="s${i}-u2ls" value="${s.universe2LedStart}" min="1" max="300" oninput="updateCalc(${i})">
           </div>
+          <div class="field"></div>
         </div>
-        <div id="s${i}-u2calc" class="calc" style="border-color:#1e3a5f;background:#0d1a2e;color:#60a5fa;">—</div>
+        <div id="s${i}-u2calc" class="calc" style="background:#0d1a0d;color:#4ade80;border:1px solid #1a3a1a;">—</div>
       </div>
     </div>
 
     <!-- Résumé canaux -->
     <div class="channel-summary" id="s${i}-summary">
+      <div style="font-size:10px;color:#555;margin-bottom:4px;">RÉSUMÉ PATCH</div>
       <div class="ch-row"><span style="font-size:10px;color:#555;">Premier canal</span><span class="ch-val" id="s${i}-first-ch">—</span></div>
       <div class="ch-row"><span style="font-size:10px;color:#555;">Dernier canal U1</span><span class="ch-val" id="s${i}-last-u1">—</span></div>
-      <div class="ch-row" id="s${i}-u2-summary-row" style="display:none"><span style="font-size:10px;color:#555;">Dernier canal U2</span><span class="ch-val-u2" id="s${i}-last-u2">—</span></div>
+      <div class="ch-row" id="s${i}-u2-row" style="display:none">
+        <span style="font-size:10px;color:#555;">Dernier canal U2</span>
+        <span class="ch-val-u2" id="s${i}-last-u2">—</span>
+      </div>
       <div class="ch-row"><span style="font-size:10px;color:#555;">Canaux totaux</span><span class="ch-val" id="s${i}-total-ch">—</span></div>
     </div>
 
@@ -438,59 +448,67 @@ function buildStripPanel(i, s) {
 }
 
 // ── Calculs ───────────────────────────────────────────────────────────────────
-function calcChannels(s) {
-  const leds = parseInt(s.ledCount) || 0;
-  const grp  = parseInt(s.dmxGroupSize) || 1;
-  switch (parseInt(s.dmxMode)) {
-    case 0: return leds * 3;
-    case 1: return Math.ceil(leds / grp) * 3;
-    case 2: return 3;
-    default: return 0;
-  }
-}
-
 function updateCalc(i) {
   const get = id => document.getElementById(id);
-  const leds  = parseInt(get(`s${i}-leds`)?.value)  || 0;
-  const mode  = parseInt(get(`s${i}-mode`)?.value)  || 0;
-  const univ  = parseInt(get(`s${i}-univ`)?.value)  || 1;
-  const ch    = parseInt(get(`s${i}-ch`)?.value)    || 1;
-  const grp   = parseInt(get(`s${i}-grp`)?.value)   || 1;
-  const u2    = parseInt(get(`s${i}-u2`)?.value)    || 0;
-  const umode = parseInt(get(`s${i}-umode`)?.value) || 0;
-  const u2ch  = parseInt(get(`s${i}-u2ch`)?.value)  || 1;
-  const u2ls  = parseInt(get(`s${i}-u2ls`)?.value)  || 0;
 
-  // Groupe visible ?
+  const leds   = parseInt(get(`s${i}-leds`)?.value)    || 0;
+  const mode   = parseInt(get(`s${i}-mode`)?.value)    || 0;
+  const ch     = parseInt(get(`s${i}-ch`)?.value)      || 1;
+  const grp    = parseInt(get(`s${i}-grp`)?.value)     || 1;
+  const umode  = parseInt(get(`s${i}-umode`)?.value)   || 0;
+  const u2ch   = parseInt(get(`s${i}-u2ch`)?.value)    || 1;
+  const u2ls   = parseInt(get(`s${i}-u2ls`)?.value)    || 0;
+
+  // Univers absolu U1
+  const net1    = parseInt(get(`s${i}-net`)?.value)    || 0;
+  const sub1    = parseInt(get(`s${i}-subnet`)?.value) || 0;
+  const univ1   = parseInt(get(`s${i}-univnum`)?.value)|| 0;
+  const abs1    = toAbsolute(net1, sub1, univ1);
+
+  // Univers absolu U2
+  const net2    = parseInt(get(`s${i}-u2net`)?.value)    || 0;
+  const sub2    = parseInt(get(`s${i}-u2subnet`)?.value) || 0;
+  const univ2   = parseInt(get(`s${i}-u2univnum`)?.value)|| 0;
+  const abs2    = toAbsolute(net2, sub2, univ2);
+  const u2Active = abs2 > 0;
+
+  // Affiche absolus
+  const abs1el = get(`s${i}-abs1`);
+  if (abs1el) abs1el.innerHTML = `Univers absolu : <span>${abs1}</span>`;
+  const abs2el = get(`s${i}-abs2`);
+  if (abs2el) abs2el.innerHTML = `Univers absolu : <span>${abs2}</span>${!u2Active?' <span style="color:#555;">(désactivé — mettre Net/Sub/U différent de 0/0/0)</span>':''}`;
+
+  // Groupe visible
   const grpRow = get(`s${i}-grp-row`);
   if (grpRow) grpRow.style.display = mode===1 ? 'flex' : 'none';
 
   // Champs U2
   const u2fields = get(`s${i}-u2fields`);
-  if (u2fields) u2fields.style.display = u2>0 ? 'block' : 'none';
+  if (u2fields) u2fields.style.display = u2Active ? 'block' : 'none';
 
   const u2lsField = get(`s${i}-u2ls-field`);
-  if (u2lsField) u2lsField.style.display = umode===0 ? 'block' : 'none';
+  if (u2lsField) u2lsField.style.display = umode===0 ? 'flex' : 'none';
 
-  // Calcul canaux
+  // Calcul canaux totaux
   let totalCh = 0;
   if (mode===0) totalCh = leds * 3;
   else if (mode===1) totalCh = Math.ceil(leds/grp)*3;
   else totalCh = 3;
 
-  const chInU1 = 512 - ch + 1;
-  const lastU1 = Math.min(ch + Math.min(totalCh, chInU1) - 1, 512);
+  const chInU1  = 512 - ch + 1;
+  const lastU1  = ch + Math.min(totalCh, chInU1) - 1;
 
+  // Info calc U1
   const calcEl = get(`s${i}-calc`);
   if (calcEl) {
-    let txt = `Univers ${univ} · canaux ${ch} → ${lastU1} · ${Math.min(totalCh,chInU1)} canaux`;
-    if (totalCh > chInU1 && u2===0)
-      txt += ' ⚠ dépasse 512 — activer le 2ème univers';
+    let txt = `Net${net1}·Sub${sub1}·U${univ1} (abs:${abs1}) · ch.${ch}→${Math.min(lastU1,512)} · ${Math.min(totalCh,chInU1)} canaux`;
+    if (totalCh > chInU1 && !u2Active)
+      txt += ' ⚠ dépasse 512 — configurer le 2ème univers';
     calcEl.textContent = txt;
   }
 
   // Calcul U2
-  if (u2 > 0 && totalCh > chInU1) {
+  if (u2Active && totalCh > chInU1) {
     let ledStartU2 = 0;
     let skip = 0;
 
@@ -502,34 +520,74 @@ function updateCalc(i) {
       skip = rem===0 ? 0 : 3-rem;
     }
 
-    const ledsU2  = leds - ledStartU2;
-    const chU2    = ledsU2 * 3;
-    const lastU2  = u2ch + chU2 - 1;
+    const ledsU2 = leds - ledStartU2;
+    const chU2   = ledsU2 * 3;
+    const lastU2 = u2ch + chU2 - 1;
 
     const u2calcEl = get(`s${i}-u2calc`);
     if (u2calcEl) {
-      let t = `Univers ${u2} · canaux ${u2ch} → ${lastU2} · ${ledsU2} LEDs`;
+      let t = `Net${net2}·Sub${sub2}·U${univ2} (abs:${abs2}) · ch.${u2ch}→${lastU2} · ${ledsU2} LEDs`;
       if (skip>0) t += ` · skip ${skip} canal${skip>1?'aux':''} fin U1`;
       u2calcEl.textContent = t;
     }
 
-    // Résumé
-    const sumRow = get(`s${i}-u2-summary-row`);
-    if (sumRow) sumRow.style.display = 'flex';
+    const u2row = get(`s${i}-u2-row`);
+    if (u2row) u2row.style.display = 'flex';
     const lastU2el = get(`s${i}-last-u2`);
-    if (lastU2el) lastU2el.textContent = `U${u2} · ch.${lastU2}`;
+    if (lastU2el) lastU2el.textContent = `Net${net2}·Sub${sub2}·U${univ2} · ch.${lastU2}`;
   } else {
-    const sumRow = get(`s${i}-u2-summary-row`);
-    if (sumRow) sumRow.style.display = 'none';
+    const u2row = get(`s${i}-u2-row`);
+    if (u2row) u2row.style.display = 'none';
   }
 
-  // Résumé canaux
+  // Résumé patch
   const firstCh = get(`s${i}-first-ch`);
   const lastU1el = get(`s${i}-last-u1`);
   const totalEl  = get(`s${i}-total-ch`);
-  if (firstCh)  firstCh.textContent  = `U${univ} · ch.${ch}`;
-  if (lastU1el) lastU1el.textContent = `U${univ} · ch.${lastU1}`;
+  if (firstCh)  firstCh.textContent  = `Net${net1}·Sub${sub1}·U${univ1} · ch.${ch}`;
+  if (lastU1el) lastU1el.textContent = `Net${net1}·Sub${sub1}·U${univ1} · ch.${Math.min(lastU1,512)}`;
   if (totalEl)  totalEl.textContent  = `${totalCh} canaux`;
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+function buildTabs() {
+  const tabs = document.getElementById('strip-tabs');
+  const panels = document.getElementById('strip-panels');
+  tabs.innerHTML = '';
+  panels.innerHTML = '';
+
+  for (let i=0; i<NUM_STRIPS; i++) {
+    const s = cfg.strips[i];
+    const tab = document.createElement('div');
+    tab.className = 'tab ' + (s.enabled?'enabled':'') + (i===activeTab?' active':'');
+    tab.textContent = s.name || ('Bande '+(i+1));
+    tab.onclick = () => selectTab(i);
+    tabs.appendChild(tab);
+
+    const panel = document.createElement('div');
+    panel.className = 'strip-panel' + (i===activeTab?' active':'');
+    panel.id = 'panel-'+i;
+    panel.innerHTML = buildStripPanel(i, s);
+    panels.appendChild(panel);
+  }
+
+  const sel = document.getElementById('t-strip');
+  sel.innerHTML = '';
+  for (let i=0; i<NUM_STRIPS; i++) {
+    if (!cfg.strips[i].enabled) continue;
+    const o = document.createElement('option');
+    o.value = i;
+    o.textContent = cfg.strips[i].name || ('Bande '+(i+1));
+    sel.appendChild(o);
+  }
+
+  updateGPIOSchema();
+}
+
+function selectTab(i) {
+  activeTab = i;
+  document.querySelectorAll('.tab').forEach((t,idx) => t.classList.toggle('active', idx===i));
+  document.querySelectorAll('.strip-panel').forEach((p,idx) => p.classList.toggle('active', idx===i));
 }
 
 function updateTab(i) {
@@ -549,68 +607,64 @@ function onEnableChange(i) {
 
 // ── Schéma GPIO ───────────────────────────────────────────────────────────────
 const LEFT_PINS = [
-  {label:'3V3', cls:'dot-pwr'},
-  {label:'3V3', cls:'dot-pwr'},
-  {label:'RST', cls:'dot-avoid'},
-  {label:'GPIO 4', cls:'dot-led', gpio:4},
-  {label:'GPIO 5', cls:'dot-led', gpio:5},
-  {label:'GPIO 6', cls:'dot-led', gpio:6},
-  {label:'GPIO 7', cls:'dot-led', gpio:7},
-  {label:'GPIO 15', cls:'dot-free'},
-  {label:'GPIO 16', cls:'dot-free'},
-  {label:'GPIO 17', cls:'dot-free'},
-  {label:'GPIO 18', cls:'dot-free'},
-  {label:'GPIO 8',  cls:'dot-free'},
+  {label:'3V3',      cls:'dot-pwr'},
+  {label:'3V3',      cls:'dot-pwr'},
+  {label:'RST',      cls:'dot-avoid'},
+  {label:'GPIO 4',   cls:'dot-led', gpio:4},
+  {label:'GPIO 5',   cls:'dot-led', gpio:5},
+  {label:'GPIO 6',   cls:'dot-led', gpio:6},
+  {label:'GPIO 7',   cls:'dot-led', gpio:7},
+  {label:'GPIO 15',  cls:'dot-free'},
+  {label:'GPIO 16',  cls:'dot-free'},
+  {label:'GPIO 17',  cls:'dot-free'},
+  {label:'GPIO 18',  cls:'dot-free'},
+  {label:'GPIO 8',   cls:'dot-free'},
 ];
 const RIGHT_PINS = [
-  {label:'GND',     cls:'dot-gnd'},
-  {label:'GPIO 0 ⚠',cls:'dot-avoid'},
-  {label:'+5V',     cls:'dot-pwr'},
-  {label:'GPIO 43', cls:'dot-free'},
-  {label:'GPIO 44', cls:'dot-free'},
-  {label:'GPIO 19 ⚠',cls:'dot-avoid'},
-  {label:'GPIO 20 ⚠',cls:'dot-avoid'},
-  {label:'GPIO 21', cls:'dot-free'},
-  {label:'GPIO 47', cls:'dot-free'},
-  {label:'GPIO 48', cls:'dot-free'},
-  {label:'GPIO 45 ⚠',cls:'dot-avoid'},
-  {label:'GPIO 38', cls:'dot-free'},
+  {label:'GND',       cls:'dot-gnd'},
+  {label:'GPIO 0 ⚠', cls:'dot-avoid'},
+  {label:'+5V',       cls:'dot-pwr'},
+  {label:'GPIO 43',   cls:'dot-free'},
+  {label:'GPIO 44',   cls:'dot-free'},
+  {label:'GPIO 19 ⚠', cls:'dot-avoid'},
+  {label:'GPIO 20 ⚠', cls:'dot-avoid'},
+  {label:'GPIO 21',   cls:'dot-free'},
+  {label:'GPIO 47',   cls:'dot-free'},
+  {label:'GPIO 48',   cls:'dot-free'},
+  {label:'GPIO 45 ⚠', cls:'dot-avoid'},
+  {label:'GPIO 38',   cls:'dot-free'},
 ];
 
 function updateGPIOSchema() {
-  // Récupère les pins actives
   const activePins = new Set();
   for (let i=0; i<NUM_STRIPS; i++) {
-    const en = document.getElementById(`s${i}-en`);
+    const en  = document.getElementById(`s${i}-en`);
     const pin = document.getElementById(`s${i}-pin`);
     if (en?.checked && pin) activePins.add(parseInt(pin.value));
   }
 
-  const renderCol = (pins, side) => {
-    return pins.map(p => {
-      const isActive = p.gpio && activePins.has(p.gpio);
-      const dotCls = isActive ? 'dot-sel' : p.cls;
-      const labelCls = side==='left' ? 'gpio-pin-label gpio-pin-label-l' : 'gpio-pin-label gpio-pin-label-r';
-      const labelStyle = isActive ? 'color:#60a5fa;' : '';
-      if (side==='left') {
-        return `<div class="gpio-pin">
-          <span class="${labelCls}" style="${labelStyle}">${p.label}${isActive?' ←':''}</span>
-          <div class="gpio-dot ${dotCls}"></div>
-        </div>`;
-      } else {
-        return `<div class="gpio-pin">
-          <div class="gpio-dot ${dotCls}"></div>
-          <span class="${labelCls}" style="${labelStyle}">${isActive?'→ ':''} ${p.label}</span>
-        </div>`;
-      }
-    }).join('');
-  };
+  const render = (pins, side) => pins.map(p => {
+    const isActive = p.gpio && activePins.has(p.gpio);
+    const dotCls   = isActive ? 'dot-sel' : p.cls;
+    const style    = isActive ? 'color:#60a5fa;' : '';
+    if (side==='left') {
+      return `<div class="gpio-pin">
+        <span class="gpio-pin-label gpio-pin-label-l" style="${style}">${p.label}${isActive?' ←':''}</span>
+        <div class="gpio-dot ${dotCls}"></div>
+      </div>`;
+    } else {
+      return `<div class="gpio-pin">
+        <div class="gpio-dot ${dotCls}"></div>
+        <span class="gpio-pin-label gpio-pin-label-r" style="${style}">${isActive?'→ ':''}${p.label}</span>
+      </div>`;
+    }
+  }).join('');
 
-  document.getElementById('gpio-left').innerHTML  = renderCol(LEFT_PINS, 'left');
-  document.getElementById('gpio-right').innerHTML = renderCol(RIGHT_PINS, 'right');
+  document.getElementById('gpio-left').innerHTML  = render(LEFT_PINS,  'left');
+  document.getElementById('gpio-right').innerHTML = render(RIGHT_PINS, 'right');
 }
 
-// ── Chargement config ─────────────────────────────────────────────────────────
+// ── Chargement ────────────────────────────────────────────────────────────────
 function loadStatus() {
   api('/api/status').then(d => {
     document.getElementById('s-name').textContent   = d.name;
@@ -645,17 +699,28 @@ function saveConfig() {
   const strips = [];
 
   for (let i=0; i<NUM_STRIPS; i++) {
+    const abs1 = toAbsolute(
+      get(`s${i}-net`)?.value,
+      get(`s${i}-subnet`)?.value,
+      get(`s${i}-univnum`)?.value
+    );
+    const abs2 = toAbsolute(
+      get(`s${i}-u2net`)?.value,
+      get(`s${i}-u2subnet`)?.value,
+      get(`s${i}-u2univnum`)?.value
+    );
+
     strips.push({
       index:            i,
       enabled:          get(`s${i}-en`)?.checked || false,
       pin:              parseInt(get(`s${i}-pin`)?.value)    || PINS[i],
       name:             get(`s${i}-name`)?.value             || ('bande-'+(i+1)),
       ledCount:         parseInt(get(`s${i}-leds`)?.value)   || 100,
-      dmxUniverse:      parseInt(get(`s${i}-univ`)?.value)   || 1,
+      dmxUniverse:      abs1,
       dmxStartChannel:  parseInt(get(`s${i}-ch`)?.value)     || 1,
       dmxMode:          parseInt(get(`s${i}-mode`)?.value)   || 0,
       dmxGroupSize:     parseInt(get(`s${i}-grp`)?.value)    || 5,
-      universe2:        parseInt(get(`s${i}-u2`)?.value)     || 0,
+      universe2:        abs2,
       universe2StartCh: parseInt(get(`s${i}-u2ch`)?.value)   || 1,
       universe2LedStart:parseInt(get(`s${i}-u2ls`)?.value)   || 0,
       universeMode:     parseInt(get(`s${i}-umode`)?.value)  || 0,
@@ -686,13 +751,9 @@ function saveWifi() {
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 function quickTest(idx, r, g, b) {
-  if (r<0) {
-    api('/api/test','POST',{strip:idx, mode:'rainbow'});
-  } else if (r===0&&g===0&&b===0) {
-    api('/api/test','POST',{strip:idx, mode:'off'});
-  } else {
-    api('/api/test','POST',{strip:idx, mode:'color', r, g, b});
-  }
+  if (r<0) api('/api/test','POST',{strip:idx, mode:'rainbow'});
+  else if (r===0&&g===0&&b===0) api('/api/test','POST',{strip:idx, mode:'off'});
+  else api('/api/test','POST',{strip:idx, mode:'color', r, g, b});
 }
 
 function testColor() {
@@ -705,15 +766,12 @@ function testColor() {
   });
 }
 function testRainbow() {
-  const idx = parseInt(document.getElementById('t-strip').value)||0;
-  api('/api/test','POST',{strip:idx, mode:'rainbow'});
+  api('/api/test','POST',{strip: parseInt(document.getElementById('t-strip').value)||0, mode:'rainbow'});
 }
 function testOff() {
-  const idx = parseInt(document.getElementById('t-strip').value)||0;
-  api('/api/test','POST',{strip:idx, mode:'off'});
+  api('/api/test','POST',{strip: parseInt(document.getElementById('t-strip').value)||0, mode:'off'});
 }
 
-// Prévisualisation couleur
 ['t-r','t-g','t-b'].forEach(id => {
   document.getElementById(id)?.addEventListener('input', () => {
     const r = document.getElementById('t-r').value;
