@@ -4,6 +4,7 @@ import BarCard from '../components/BarCard'
 import LedVisualizer from '../components/LedVisualizer'
 import BarConfig from './BarConfig'
 import TouchDesignerSetup from './TouchDesignerSetup'
+import Visualizer from './Visualizer'
 
 export default function Dashboard() {
   const bars = useStore(s => s.bars)
@@ -28,14 +29,17 @@ export default function Dashboard() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          {['dashboard', 'visualizer', 'touchdesigner'].map(t => (
+          {['dashboard', 'visualizer', 'realtime', 'touchdesigner'].map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
               padding: '6px 14px', borderRadius: 6, border: 'none',
               fontSize: 12, fontWeight: 500,
               background: tab === t ? '#2563eb' : '#1e1e1e',
               color: tab === t ? '#fff' : '#a0a0a0',
             }}>
-              {t === 'dashboard' ? 'Dashboard' : t === 'visualizer' ? 'Visualiseur' : '🎛 TouchDesigner'}
+              {t === 'dashboard' ? 'Dashboard'
+              : t === 'visualizer' ? '🎥 Visualiseur'
+              : t === 'realtime' ? '🔄 Temps réel'
+              : '🎛 TouchDesigner'}
             </button>
           ))}
         </div>
@@ -82,6 +86,10 @@ export default function Dashboard() {
           </h2>
           <LedVisualizer bars={bars} />
         </div>
+      )}
+      
+      {tab === 'realtime' && (
+        <Visualizer />
       )}
 
       {tab === 'touchdesigner' && (
