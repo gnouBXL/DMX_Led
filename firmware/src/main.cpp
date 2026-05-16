@@ -6,6 +6,7 @@
 #include "leds/LedController.h"
 #include "leds/Effects.h"
 #include "web/WebServer.h"
+#include "network/Discovery.h"
 
 // ─── Instances globales ───────────────────────────────────────────────────────
 Config        config;
@@ -14,6 +15,7 @@ ArtNet        artnet;
 LedController leds;
 Effects       effects;
 WebServer     webServer;
+Discovery discovery;
 
 // ─── État DMX par bande ───────────────────────────────────────────────────────
 bool     dmxActive[MAX_STRIPS]   = { false };
@@ -64,6 +66,7 @@ void setup() {
 
     // 4. Wi-Fi
     wifiManager.begin(config.data);
+    discovery.begin(config.data);
 
     // 5. Art-Net
     artnet.begin(config.data, onArtNetData);
@@ -78,6 +81,9 @@ void setup() {
 void loop() {
     // Wi-Fi
     wifiManager.loop();
+
+    // Discovery UDP
+   discovery.loop();
 
     // Timeout synchro multi-univers
     artnet.loop();

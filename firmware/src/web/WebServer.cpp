@@ -191,8 +191,7 @@ void WebServer::_handlePostWifi(AsyncWebServerRequest* req,
 }
 
 // ─── POST /api/test ───────────────────────────────────────────────────────────
-void WebServer::_handlePostTest(AsyncWebServerRequest* req,
-                                 JsonVariant& json) {
+void WebServer::_handlePostTest(AsyncWebServerRequest* req, JsonVariant& json) {
     int    stripIdx = json["strip"] | 0;
     String mode     = json["mode"]  | "color";
 
@@ -207,11 +206,15 @@ void WebServer::_handlePostTest(AsyncWebServerRequest* req,
         uint8_t r = json["r"] | 255;
         uint8_t g = json["g"] | 0;
         uint8_t b = json["b"] | 0;
+        // Arrête l'effet autonome et applique la couleur
+        _effects->setEffect(stripIdx, EFFECT_SOLID);
+        _effects->setColor(stripIdx, r, g, b);
         strip.setAll(r, g, b);
         _leds->show();
     } else if (mode == "rainbow") {
         _effects->setEffect(stripIdx, EFFECT_RAINBOW);
     } else if (mode == "off") {
+        _effects->setEffect(stripIdx, EFFECT_NONE);
         strip.clear();
         _leds->show();
     }
