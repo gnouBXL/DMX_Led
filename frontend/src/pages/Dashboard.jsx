@@ -6,9 +6,11 @@ import BarConfig from './BarConfig'
 import TouchDesignerSetup from './TouchDesignerSetup'
 import Visualizer from './Visualizer'
 
+
 export default function Dashboard() {
   const bars = useStore(s => s.bars)
   const selectedBar = useStore(s => s.selectedBar)
+  const selectedStrip = useStore(s => s.selectedStrip)
   const clearSelection = useStore(s => s.clearSelection)
   const [tab, setTab] = useState('dashboard')
 
@@ -61,19 +63,21 @@ export default function Dashboard() {
           </div>
 
           {/* Panel config si une barre est sélectionnée */}
-          {selectedBar && (
+          {selectedBar && selectedStrip && (
             <div style={{
               background: '#141414', border: '1px solid #2a2a2a',
               borderRadius: 10, padding: 16, height: 'fit-content',
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-                <span style={{ fontSize: 13, fontWeight: 500 }}>Configuration</span>
+                <span style={{ fontSize: 13, fontWeight: 500 }}>
+                  Configuration — Bande {selectedStrip.stripIndex + 1}
+                </span>
                 <button onClick={clearSelection} style={{
                   background: 'none', border: 'none', color: '#555',
                   fontSize: 18, lineHeight: 1,
                 }}>×</button>
               </div>
-              <BarConfig bar={selectedBar} />
+              <BarConfig bar={selectedBar} stripIndex={selectedStrip.stripIndex} />
             </div>
           )}
         </div>
