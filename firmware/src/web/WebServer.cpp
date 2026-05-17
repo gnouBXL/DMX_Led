@@ -21,6 +21,8 @@ void WebServer::_setupRoutes() {
         "Access-Control-Allow-Methods", "GET, POST, OPTIONS");
     DefaultHeaders::Instance().addHeader(
         "Access-Control-Allow-Headers", "Content-Type");
+    DefaultHeaders::Instance().addHeader(
+        "Access-Control-Allow-Private-Network", "true");
 
     _server.onNotFound([](AsyncWebServerRequest* req) {
         if (req->method() == HTTP_OPTIONS) req->send(200);
