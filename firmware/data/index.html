@@ -78,6 +78,8 @@
   .modal { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px; padding: 14px; max-width: 500px; margin: 0 auto; }
   .modal h3 { font-size: 13px; font-weight: 500; color: #fff; margin-bottom: 10px; }
   .modal-close { float: right; background: none; border: none; color: #555; font-size: 18px; cursor: pointer; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .modal-actions .btn { flex: 1; min-width: 120px; }
   .mode-block { border-radius: 6px; padding: 10px; margin-bottom: 8px; }
   .mode-td  { background: #0d1a2e; border-left: 3px solid #2563eb; }
   .mode-qlc { background: #0a1a0e; border-left: 3px solid #16a34a; }
@@ -249,6 +251,21 @@
   </div>
 </div>
 
+<!-- Modal redémarrage après sauvegarde -->
+<div class="modal-bg" id="reboot-modal">
+  <div class="modal">
+    <h3>Redémarrage requis</h3>
+    <p style="font-size:11px;color:#888;line-height:1.5;">
+      GPIO, bandes actives ou nombre de LEDs modifiés. FastLED ne peut pas
+      réinitialiser les pins sans redémarrage.
+    </p>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="confirmReboot()">Redémarrer maintenant</button>
+      <button class="btn btn-secondary" onclick="closeRebootPrompt()">Plus tard</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const PINS = [4, 5, 6, 7];
 const PIN_LABELS = {4:'Bande 1', 5:'Bande 2', 6:'Bande 3', 7:'Bande 4'};
@@ -293,6 +310,27 @@ function absLabel(net, subnet, univ) {
 // ── Aide ──────────────────────────────────────────────────────────────────────
 function openHelp()  { document.getElementById('help-modal').classList.add('open'); }
 function closeHelp() { document.getElementById('help-modal').classList.remove('open'); }
+
+function showRebootPrompt() { document.getElementById('reboot-modal').classList.add('open'); }
+function closeRebootPrompt() { document.getElementById('reboot-modal').classList.remove('open'); }
+function confirmReboot() {
+  closeRebootPrompt();
+  api('/api/reboot', 'POST');
+}
+
+function configNeedsReboot(body) {
+  if (!cfg) return true;
+  if (body.fpsMax !== cfg.fpsMax) return true;
+  if (body.stripCount !== cfg.stripCount) return true;
+  for (let i = 0; i < NUM_STRIPS; i++) {
+    const n = body.strips[i];
+    const o = cfg.strips?.[i] || {};
+    if (!!n.enabled !== !!o.enabled) return true;
+    if (n.pin !== o.pin) return true;
+    if (n.ledCount !== o.ledCount) return true;
+  }
+  return false;
+}
 
 // ── Construction du panel d'une bande ─────────────────────────────────────────
 function buildStripPanel(i, s) {
@@ -751,7 +789,15 @@ function saveConfig() {
   };
 
   api('/api/config', 'POST', body)
-    .then(() => showAlert('cfg-alert', '✓ Configuration enregistrée', true))
+    .then(() => {
+      if (configNeedsReboot(body)) {
+        showAlert('cfg-alert', '✓ Enregistré — redémarrage requis', true);
+        showRebootPrompt();
+      } else {
+        showAlert('cfg-alert', '✓ Configuration enregistrée', true);
+      }
+      loadConfig();
+    })
     .catch(() => showAlert('cfg-alert', '✗ Erreur de connexion', false));
 }
 
