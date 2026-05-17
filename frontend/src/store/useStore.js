@@ -31,7 +31,8 @@ export const useStore = create((set, get) => ({
   setUniverse: (universe, data) => set((state) => ({
     universes: {
       ...state.universes,
-      [universe]: new Uint8Array(data),
+      [universe]: Array.from(data),
+      _tick: Date.now(),
     }
   })),
 

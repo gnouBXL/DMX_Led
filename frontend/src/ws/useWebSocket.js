@@ -18,8 +18,8 @@ export function connectWS({ setBars, updateBar, setUniverse }) {
   socket.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data)
-      if (data.type === 'bars_list')      setBars(data.bars)
-      if (data.type === 'bar_update')     updateBar(data.bar)
+      if (data.type === 'bars_list')       setBars(data.bars)
+      if (data.type === 'bar_update')      updateBar(data.bar)
       if (data.type === 'artnet_universe') setUniverse(data.universe, data.data)
     } catch (e) {
       console.error('[WS] Message invalide:', e)

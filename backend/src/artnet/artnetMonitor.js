@@ -36,8 +36,13 @@ export function startArtNetMonitor(wss) {
     }
     dmxData.copy(universeBuffers.get(universe))
 
-    // Redistribue via WebSocket
-    broadcastUniverse(universe, dmxData)
+    // Redistribue via WebSocket (throttle 10fps)
+    const now = Date.now()
+    if (!universeBuffers._lastSent) universeBuffers._lastSent = {}
+    if (!universeBuffers._lastSent[universe] || now - universeBuffers._lastSent[universe] > 100) {
+      universeBuffers._lastSent[universe] = now
+      broadcastUniverse(universe, dmxData)
+    }
   })
 
   socket.on('error', err => {
