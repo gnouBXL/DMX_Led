@@ -53,6 +53,9 @@ void WebServer::_setupRoutes() {
         [this](AsyncWebServerRequest* req) { _handleReboot(req); });
 
     _server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
+
+    _server.on("/api/wifi/scan", HTTP_GET,
+        [this](AsyncWebServerRequest* req) { _handleGetWifiScan(req); });
 }
 
 // ─── GET /api/status ──────────────────────────────────────────────────────────
@@ -244,4 +247,23 @@ void WebServer::_handleReboot(AsyncWebServerRequest* req) {
     req->send(200, "application/json", "{\"ok\":true}");
     delay(500);
     ESP.restart();
+}
+
+void WebServer::_handleGetWifiScan(AsyncWebServerRequest* req) {
+    int n = WiFi.scanNetworks();
+    JsonDocument doc;
+    JsonArray networks = doc.to<JsonArray>();
+
+    for (int i = 0; i < n; i++) {
+        JsonObject net = networks.add<JsonObject>();
+        net["ssid"]    = WiFi.SSID(i);
+        net["rssi"]    = WiFi.RSSI(i);
+        net["secure"]  = (WiFi.encryptionType(i) != WIFI_AUTH_OPEN);
+    }
+
+    String out;
+    serializeJson(doc, out);
+    req->send(200, "application/json", out);
+
+    WiFi.scanDelete();
 }

@@ -189,7 +189,21 @@
 <div class="card">
   <div class="card-title">Wi-Fi</div>
   <div class="row">
-    <div class="field"><label>SSID</label><input type="text" id="w-ssid"></div>
+    <div class="field">
+      <label>Réseau Wi-Fi</label>
+      <div style="display:flex;gap:6px;">
+        <select id="w-ssid-select" style="flex:1;background:#111;border:1px solid #2a2a2a;border-radius:6px;color:#e0e0e0;padding:6px 8px;font-size:12px;">
+          <option value="">— Cliquer sur Scan —</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" onclick="scanWifi()" id="scan-btn">Scan</button>
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="field">
+      <label>SSID (manuel)</label>
+      <input type="text" id="w-ssid" placeholder="ou entrer manuellement">
+    </div>
   </div>
   <div class="row">
     <div class="field"><label>Mot de passe</label><input type="password" id="w-pass"></div>
@@ -741,12 +755,52 @@ function saveConfig() {
     .catch(() => showAlert('cfg-alert', '✗ Erreur de connexion', false));
 }
 
+function scanWifi() {
+  const btn = document.getElementById('scan-btn')
+  const sel = document.getElementById('w-ssid-select')
+  btn.textContent = '...'
+  btn.disabled = true
+  sel.innerHTML = '<option value="">Scan en cours...</option>'
+
+  api('/api/wifi/scan')
+    .then(networks => {
+      sel.innerHTML = '<option value="">— Choisir un réseau —</option>'
+      networks
+        .sort((a, b) => b.rssi - a.rssi)
+        .forEach(n => {
+          const opt = document.createElement('option')
+          opt.value = n.ssid
+          opt.textContent = `${n.secure ? '🔒' : '📶'} ${n.ssid} (${n.rssi} dBm)`
+          sel.appendChild(opt)
+        })
+      btn.textContent = 'Scan'
+      btn.disabled = false
+    })
+    .catch(() => {
+      sel.innerHTML = '<option value="">✗ Erreur scan</option>'
+      btn.textContent = 'Scan'
+      btn.disabled = false
+    })
+}
+
+// Quand on choisit dans la liste, copie dans le champ texte
+document.getElementById('w-ssid-select')?.addEventListener('change', function() {
+  if (this.value) document.getElementById('w-ssid').value = this.value
+})
+
 function saveWifi() {
-  api('/api/wifi', 'POST', {
-    ssid:     document.getElementById('w-ssid').value,
-    password: document.getElementById('w-pass').value,
-  }).then(() => showAlert('wifi-alert', '✓ Wi-Fi enregistré · Redémarrage...', true))
-    .catch(() => showAlert('wifi-alert', '✗ Erreur', false));
+  const ssid = document.getElementById('w-ssid-select').value
+             || document.getElementById('w-ssid').value
+  const pass = document.getElementById('w-pass').value
+
+  if (!ssid) {
+    showAlert('wifi-alert', '✗ Choisir ou entrer un SSID', false)
+    return
+  }
+
+  api('/api/wifi', 'POST', { ssid, password: pass })
+    .then(() => showAlert('wifi-alert', '✓ Wi-Fi enregistré · Redémarrage...', true))
+    .catch(() => showAlert('wifi-alert', '✗ Erreur', false))
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

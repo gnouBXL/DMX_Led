@@ -30,4 +30,5 @@ private:
     void _handlePostTest(AsyncWebServerRequest* req, JsonVariant& json);
     void _handlePostEffect(AsyncWebServerRequest* req, JsonVariant& json);
     void _handleReboot(AsyncWebServerRequest* req);
+    void _handleGetWifiScan(AsyncWebServerRequest* req);
 };
