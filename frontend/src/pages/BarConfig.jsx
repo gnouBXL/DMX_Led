@@ -67,6 +67,9 @@ export default function BarConfig({ bar, stripIndex }) {
     universeMode:      strip.universeMode || 0,
   })
   const [msg, setMsg] = useState(null)
+  const [rebootOffer, setRebootOffer] = useState(false)
+
+  const PINS = [4, 5, 6, 7]
 
   // Reset quand on change de bande
   useEffect(() => {
@@ -98,9 +101,24 @@ export default function BarConfig({ bar, stripIndex }) {
   const needsU2 = totalCh > chInU1
   const u2Active = form.universe2 > 0
 
+  const configNeedsReboot = (allStrips) => {
+    const prev = bar.strips || []
+    const newCount = allStrips.filter(s => s.enabled).length
+    const oldCount = bar.stripCount ?? prev.filter(s => s.enabled).length
+    if (newCount !== oldCount) return true
+    for (let i = 0; i < 4; i++) {
+      const n = allStrips[i]
+      const o = prev[i] || {}
+      if (!!n.enabled !== !!o.enabled) return true
+      if ((n.pin ?? PINS[i]) !== (o.pin ?? PINS[i])) return true
+      if ((n.ledCount ?? 100) !== (o.ledCount ?? 100)) return true
+    }
+    return false
+  }
+
   const save = async () => {
+    setRebootOffer(false)
     try {
-      // Construit la config complète avec toutes les bandes
       const allStrips = Array.from({ length: 4 }, (_, i) => {
         if (i === stripIndex) return { index: i, ...form }
         const s = bar.strips?.[i] || {}
@@ -117,11 +135,17 @@ export default function BarConfig({ bar, stripIndex }) {
           strips: allStrips,
         }),
       })
-      setMsg({ ok: true, text: 'Enregistré ✓ — Redémarrer pour activer les changements' })
+      if (configNeedsReboot(allStrips)) {
+        setMsg({ ok: true, text: 'Configuration enregistrée' })
+        setRebootOffer(true)
+      } else {
+        setMsg({ ok: true, text: 'Enregistré — paramètres DMX actifs' })
+        setTimeout(() => setMsg(null), 5000)
+      }
     } catch {
       setMsg({ ok: false, text: 'Erreur de connexion' })
+      setTimeout(() => setMsg(null), 5000)
     }
-    setTimeout(() => setMsg(null), 5000)
   }
 
   const test = async (mode, r=255, g=0, b=0) => {
@@ -132,12 +156,16 @@ export default function BarConfig({ bar, stripIndex }) {
     }).catch(() => {})
   }
 
-  const reboot = async () => {
-    if (!confirm('Redémarrer cette barre ?')) return
+  const doReboot = async () => {
+    setRebootOffer(false)
+    setMsg({ ok: true, text: 'Redémarrage en cours…' })
     await fetch(`${API}/api/bars/${bar.ip}/reboot`, { method: 'POST' }).catch(() => {})
   }
 
-  const PINS = [4, 5, 6, 7]
+  const reboot = async () => {
+    if (!confirm('Redémarrer cette barre ?')) return
+    await doReboot()
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -267,6 +295,23 @@ export default function BarConfig({ bar, stripIndex }) {
       {msg && (
         <div style={{ fontSize: 12, padding: '6px 10px', borderRadius: 6, background: msg.ok ? '#14532d' : '#7f1d1d', color: msg.ok ? '#86efac' : '#fca5a5' }}>
           {msg.text}
+        </div>
+      )}
+
+      {rebootOffer && (
+        <div style={{ fontSize: 12, padding: '10px 12px', borderRadius: 6, background: '#1c1600', border: '1px solid #713f12', color: '#fde68a' }}>
+          <div style={{ marginBottom: 8, lineHeight: 1.5 }}>
+            GPIO, bandes actives ou nombre de LEDs modifiés — un redémarrage est
+            nécessaire pour que FastLED applique les changements.
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <button onClick={doReboot} style={{ ...btn, background: '#2563eb', color: '#fff' }}>
+              Redémarrer maintenant
+            </button>
+            <button onClick={() => setRebootOffer(false)} style={{ ...btn, background: '#1e1e1e', color: '#aaa' }}>
+              Plus tard
+            </button>
+          </div>
         </div>
       )}
 

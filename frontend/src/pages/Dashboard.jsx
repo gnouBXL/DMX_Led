@@ -77,7 +77,11 @@ export default function Dashboard() {
                   fontSize: 18, lineHeight: 1,
                 }}>×</button>
               </div>
-              <BarConfig bar={selectedBar} stripIndex={selectedStrip.stripIndex} />
+              <BarConfig
+                key={`${selectedBar.ip}-${selectedStrip.stripIndex}`}
+                bar={selectedBar}
+                stripIndex={selectedStrip.stripIndex}
+              />
             </div>
           )}
         </div>
