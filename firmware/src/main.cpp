@@ -22,19 +22,18 @@ bool     dmxActive[MAX_STRIPS]   = { false };
 uint32_t lastDmxTime[MAX_STRIPS] = { 0 };
 
 // ─── Callback Art-Net ─────────────────────────────────────────────────────────
-// Appelé pour chaque bande avec son buffer fusionné
 void onArtNetData(uint8_t stripIndex, uint8_t* data, uint16_t length) {
     if (stripIndex >= MAX_STRIPS) return;
 
     lastDmxTime[stripIndex] = millis();
 
     if (!dmxActive[stripIndex]) {
-        Serial.printf("[Main] Signal Art-Net reçu → bande %d active\n",
-                      stripIndex + 1);
+        Serial.printf("[Main] Signal Art-Net reçu → bande %d active\n", stripIndex + 1);
         dmxActive[stripIndex] = true;
     }
 
     leds.getStrip(stripIndex).applyDMX(data, length);
+    // Ne pas appeler show() ici — on le fait dans la loop()
 }
 
 // ─── Setup ────────────────────────────────────────────────────────────────────
@@ -108,14 +107,26 @@ void loop() {
 
     // Effets autonomes sur les bandes sans signal DMX
     bool needShow = false;
+
     for (uint8_t i = 0; i < MAX_STRIPS; i++) {
         if (!config.data.strips[i].enabled) continue;
-        if (!dmxActive[i]) {
+
+        if (dmxActive[i]) {
+            if (millis() - lastDmxTime[i] > config.data.timeoutMs) {
+                Serial.printf("[Main] Bande %d → mode autonome\n", i + 1);
+                dmxActive[i] = false;
+                effects.setEffect(i, EFFECT_BREATHING);
+                effects.setColor(i, 50, 25, 0);
+            } else {
+                needShow = true;  // DMX actif → besoin de show
+            }
+        } else {
             effects.getStrip(i).loop();
-            needShow = true;
+            needShow = true;  // Effet autonome → besoin de show
         }
     }
 
+    // Un seul show() par cycle
     if (needShow) {
         leds.show();
     }
