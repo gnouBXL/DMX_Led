@@ -245,3 +245,23 @@ MIT avec attribution obligatoire — © 2026 Laurent Stevens
 Libre d'utilisation, modification et distribution. Toute utilisation publique
 ou dérivée doit citer l'auteur original : **Laurent Stevens — DMX LED Controller**
 https://github.com/gnouBXL/DMX_Led
+
+## Backlog — améliorations futures
+
+| Priorité | Amélioration | Description |
+|---|---|---|
+| 🔴 | Scan Wi-Fi dans l'interface ESP32 | Ne pas avoir à taper le SSID manuellement |
+| 🔴 | Support Chrome pour IP locales | Headers `Access-Control-Allow-Private-Network` |
+| 🟡 | Couleur/effet par défaut configurable | Par bande, au lieu du breathing automatique |
+| 🟡 | Proposer redémarrage après sauvegarde | FastLED ne peut pas ajouter des pins dynamiquement |
+| 🟡 | Onglet Temps réel — miniatures cliquables | Si trop lourd d'afficher toutes les bandes |
+| 🟢 | Mode studio | Barres configurées sans ESP assigné |
+| 🟢 | Illustrations TouchDesigner | Captures d'écran réelles dans la page Setup |
+| 🟢 | Pages setup QLC+ et Resolume | Guide de configuration par logiciel |
+| 🟢 | OTA Update | Mise à jour firmware sans câble USB |
+
+## Corrections apportées
+
+- **Bug 3 bandes figées** — `FastLED.show()` appelé une seule fois par cycle de loop (évite les conflits RMT)
+- **Throttle Art-Net** — redistribution WebSocket limitée à 10fps pour éviter la surcharge
+- **Univers NaN** — filtrage des clés non-numériques dans le moniteur d'univers
