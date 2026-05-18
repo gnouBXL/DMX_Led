@@ -19,6 +19,12 @@ app.use(express.json())
 
 // Routes API
 app.use('/api/bars', barsRouter)
+app.use('/api', (req, res, next) => {
+  if (req.path.startsWith('/flash')) {
+    return barsRouter(req, res, next)
+  }
+  next()
+})
 
 // API univers DMX en temps réel
 app.get('/api/universes', (req, res) => {

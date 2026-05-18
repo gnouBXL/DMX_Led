@@ -79,4 +79,54 @@ router.post('/:ip/reboot', async (req, res) => {
     }
 });
 
+// GET /api/flash/releases/latest — retourne la dernière release GitHub
+router.get('/flash/releases/latest', async (req, res) => {
+    try {
+        const token = process.env.GITHUB_TOKEN || readFlashToken()
+        const headers = { 'Accept': 'application/vnd.github.v3+json' }
+        if (token) headers['Authorization'] = `token ${token}`
+
+        const response = await fetch(
+            'https://api.github.com/repos/gnouBXL/DMX_Led/releases/latest',
+            { headers, timeout: 10000 }
+        )
+        const data = await response.json()
+        res.json(data)
+    } catch (e) {
+        res.status(503).json({ error: 'GitHub inaccessible' })
+    }
+})
+
+// GET /api/flash/asset?url=... — proxy téléchargement asset GitHub privé
+router.get('/flash/asset', async (req, res) => {
+    try {
+        const assetUrl = req.query.url
+        if (!assetUrl || !assetUrl.includes('api.github.com')) {
+            return res.status(400).json({ error: 'URL invalide' })
+        }
+        const token = process.env.GITHUB_TOKEN || readFlashToken()
+        const headers = { 'Accept': 'application/octet-stream' }
+        if (token) headers['Authorization'] = `token ${token}`
+
+        const response = await fetch(assetUrl, { headers })
+        if (!response.ok) throw new Error(`GitHub: ${response.status}`)
+
+        res.set('Content-Type', 'application/octet-stream')
+        response.body.pipe(res)
+    } catch (e) {
+        res.status(503).json({ error: e.message })
+    }
+})
+
+function readFlashToken() {
+    try {
+        const fs = require('fs')
+        const path = require('path')
+        const tokenFile = path.join(process.cwd(), '..', '.flash_token')
+        return fs.readFileSync(tokenFile, 'utf8').trim()
+    } catch {
+        return null
+    }
+}
+
 export default router;
