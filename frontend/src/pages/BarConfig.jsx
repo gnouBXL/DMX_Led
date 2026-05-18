@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 function fromAbsolute(abs) {
   abs = parseInt(abs) || 0
@@ -68,10 +70,11 @@ export default function BarConfig({ bar, stripIndex }) {
   })
   const [msg, setMsg] = useState(null)
   const [rebootOffer, setRebootOffer] = useState(false)
+  const rebootSessionRef = useRef(0)
 
   const PINS = [4, 5, 6, 7]
 
-  // Reset quand on change de bande
+  // Reset formulaire + invalide le polling reboot si barre / bande change
   useEffect(() => {
     const s = bar.strips?.[stripIndex] || {}
     setForm({
@@ -89,6 +92,9 @@ export default function BarConfig({ bar, stripIndex }) {
       universe2LedStart: s.universe2LedStart || 0,
       universeMode:      s.universeMode || 0,
     })
+    return () => {
+      rebootSessionRef.current++
+    }
   }, [bar.ip, stripIndex])
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
@@ -148,7 +154,7 @@ export default function BarConfig({ bar, stripIndex }) {
     }
   }
 
-  const test = async (mode, r=255, g=0, b=0) => {
+  const test = async (mode, r = 255, g = 0, b = 0) => {
     await fetch(`${API}/api/bars/${bar.ip}/test`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -156,15 +162,56 @@ export default function BarConfig({ bar, stripIndex }) {
     }).catch(() => {})
   }
 
+  /** Clic explicite (onClick) — évite la propagation vers la carte / autres handlers */
+  const handleTestClick = (e, fn) => {
+    e.preventDefault()
+    e.stopPropagation()
+    fn()
+  }
+
+  const waitForEspAfterReboot = async () => {
+    const sid = rebootSessionRef.current
+    try {
+      await fetch(`${API}/api/bars/${bar.ip}/reboot`, { method: 'POST' })
+    } catch {
+      /* la connexion peut couper avant la réponse HTTP */
+    }
+    await sleep(8000)
+    if (rebootSessionRef.current !== sid) return
+    const statusUrl = `http://${bar.ip}/api/status`
+    const maxTries = 120
+    for (let i = 0; i < maxTries; i++) {
+      if (rebootSessionRef.current !== sid) return
+      try {
+        const ctrl = new AbortController()
+        const t = setTimeout(() => ctrl.abort(), 2000)
+        const r = await fetch(statusUrl, { method: 'GET', signal: ctrl.signal })
+        clearTimeout(t)
+        if (r.ok) {
+          setMsg({ ok: true, text: 'ESP32 reconnecté ✓' })
+          setTimeout(() => setMsg(null), 5000)
+          return
+        }
+      } catch {
+        /* encore hors ligne */
+      }
+      await sleep(1000)
+    }
+    if (rebootSessionRef.current !== sid) return
+    setMsg({ ok: false, text: 'Reconnexion impossible (timeout)' })
+    setTimeout(() => setMsg(null), 8000)
+  }
+
   const doReboot = async () => {
     setRebootOffer(false)
     setMsg({ ok: true, text: 'Redémarrage en cours…' })
-    await fetch(`${API}/api/bars/${bar.ip}/reboot`, { method: 'POST' }).catch(() => {})
+    await waitForEspAfterReboot()
   }
 
   const reboot = async () => {
     if (!confirm('Redémarrer cette barre ?')) return
-    await doReboot()
+    setMsg({ ok: true, text: 'Redémarrage en cours…' })
+    await waitForEspAfterReboot()
   }
 
   return (
@@ -305,34 +352,34 @@ export default function BarConfig({ bar, stripIndex }) {
             nécessaire pour que FastLED applique les changements.
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            <button onClick={doReboot} style={{ ...btn, background: '#2563eb', color: '#fff' }}>
+            <button type="button" onClick={doReboot} style={{ ...btn, background: '#2563eb', color: '#fff' }}>
               Redémarrer maintenant
             </button>
-            <button onClick={() => setRebootOffer(false)} style={{ ...btn, background: '#1e1e1e', color: '#aaa' }}>
+            <button type="button" onClick={() => setRebootOffer(false)} style={{ ...btn, background: '#1e1e1e', color: '#aaa' }}>
               Plus tard
             </button>
           </div>
         </div>
       )}
 
-      <button onClick={save} style={{ ...btn, background: '#2563eb', color: '#fff' }}>
+      <button type="button" onClick={save} style={{ ...btn, background: '#2563eb', color: '#fff' }}>
         Enregistrer
       </button>
 
-      {/* Tests */}
+      {/* Tests — type="button" + onClick uniquement (pas mouseup/mousedown) */}
       <div style={{ borderTop: '1px solid #2a2a2a', paddingTop: 10 }}>
         <div style={{ fontSize: 11, color: '#555', marginBottom: 8 }}>TEST</div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          <button onClick={() => test('color', 255, 0, 0)} style={{ ...btn, background: '#7f1d1d', color: '#fca5a5' }}>Rouge</button>
-          <button onClick={() => test('color', 0, 255, 0)} style={{ ...btn, background: '#14532d', color: '#86efac' }}>Vert</button>
-          <button onClick={() => test('color', 0, 0, 255)} style={{ ...btn, background: '#1e3a5f', color: '#93c5fd' }}>Bleu</button>
-          <button onClick={() => test('rainbow')} style={{ ...btn, background: '#1e1e1e', color: '#a0a0a0' }}>🌈 Rainbow</button>
-          <button onClick={() => test('off')} style={{ ...btn, background: '#1e1e1e', color: '#555' }}>Éteindre</button>
+          <button type="button" onClick={(e) => handleTestClick(e, () => void test('color', 255, 0, 0))} style={{ ...btnTest, background: '#7f1d1d', color: '#fca5a5' }}>Rouge</button>
+          <button type="button" onClick={(e) => handleTestClick(e, () => void test('color', 0, 255, 0))} style={{ ...btnTest, background: '#14532d', color: '#86efac' }}>Vert</button>
+          <button type="button" onClick={(e) => handleTestClick(e, () => void test('color', 0, 0, 255))} style={{ ...btnTest, background: '#1e3a5f', color: '#93c5fd' }}>Bleu</button>
+          <button type="button" onClick={(e) => handleTestClick(e, () => void test('rainbow'))} style={{ ...btnTest, background: '#1e1e1e', color: '#a0a0a0' }}>🌈 Rainbow</button>
+          <button type="button" onClick={(e) => handleTestClick(e, () => void test('off'))} style={{ ...btnTest, background: '#1e1e1e', color: '#555' }}>Éteindre</button>
         </div>
       </div>
 
       <div style={{ borderTop: '1px solid #2a2a2a', paddingTop: 10 }}>
-        <button onClick={reboot} style={{ ...btn, background: '#1c1c1c', color: '#ef4444', border: '1px solid #7f1d1d' }}>
+        <button type="button" onClick={reboot} style={{ ...btn, background: '#1c1c1c', color: '#ef4444', border: '1px solid #7f1d1d' }}>
           Redémarrer
         </button>
       </div>
@@ -365,5 +412,11 @@ const inp = {
 
 const btn = {
   padding: '7px 12px', borderRadius: 6, border: 'none',
-  fontSize: 12, fontWeight: 500, cursor: 'pointer',
+  fontSize: 12, fontWeight: 500, cursor: 'pointer', touchAction: 'manipulation',
+}
+
+const btnTest = {
+  ...btn,
+  userSelect: 'none',
+  WebkitUserSelect: 'none',
 }

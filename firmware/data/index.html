@@ -144,7 +144,7 @@
   <div id="strip-panels"></div>
   <div class="alert" id="cfg-alert"></div>
   <br>
-  <button class="btn btn-primary" onclick="saveConfig()">Enregistrer tout</button>
+  <button type="button" class="btn btn-primary" onclick="saveConfig()">Enregistrer tout</button>
 </div>
 
 <!-- Schéma GPIO -->
@@ -181,9 +181,9 @@
     <div class="color-preview" id="cprev" style="background:red;"></div>
   </div>
   <div class="btn-row" style="margin-top:8px;">
-    <button class="btn btn-primary btn-sm" onclick="testColor()">Appliquer</button>
-    <button class="btn btn-secondary btn-sm" onclick="testRainbow()">🌈 Rainbow</button>
-    <button class="btn btn-secondary btn-sm" onclick="testOff()">Éteindre</button>
+    <button type="button" class="btn btn-primary btn-sm" onclick="testColor()">Appliquer</button>
+    <button type="button" class="btn btn-secondary btn-sm" onclick="testRainbow()">🌈 Rainbow</button>
+    <button type="button" class="btn btn-secondary btn-sm" onclick="testOff()">Éteindre</button>
   </div>
 </div>
 
@@ -197,7 +197,7 @@
         <select id="w-ssid-select" style="flex:1;background:#111;border:1px solid #2a2a2a;border-radius:6px;color:#e0e0e0;padding:6px 8px;font-size:12px;">
           <option value="">— Cliquer sur Scan —</option>
         </select>
-        <button class="btn btn-secondary btn-sm" onclick="scanWifi()" id="scan-btn">Scan</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="scanWifi()" id="scan-btn">Scan</button>
       </div>
     </div>
   </div>
@@ -212,19 +212,19 @@
   </div>
   <div class="alert" id="wifi-alert"></div>
   <br>
-  <button class="btn btn-primary" onclick="saveWifi()">Connecter</button>
+  <button type="button" class="btn btn-primary" onclick="saveWifi()">Connecter</button>
 </div>
 
 <!-- Système -->
 <div class="card">
   <div class="card-title">Système</div>
-  <button class="btn btn-danger" onclick="reboot()">Redémarrer</button>
+  <button type="button" class="btn btn-danger" onclick="reboot()">Redémarrer</button>
 </div>
 
 <!-- Modal aide univers -->
 <div class="modal-bg" id="help-modal">
   <div class="modal">
-    <button class="modal-close" onclick="closeHelp()">×</button>
+    <button type="button" class="modal-close" onclick="closeHelp()">×</button>
     <h3>Guide multi-univers</h3>
     <p style="font-size:11px;color:#666;margin-bottom:12px;">
       Une bande de 300 LEDs Full Pixel = 900 canaux. Un univers = 512 canaux max. Il faut 2 univers.
@@ -247,7 +247,7 @@
       <div class="ubar"><div class="u1s">U1 ch.1→510</div><div class="sks">skip</div><div class="u2s">U2 ch.1→390</div></div>
       <div class="mode-desc">R, G, B d'un même pixel restent dans le même univers. 1-2 canaux sautés en fin U1.</div>
     </div>
-    <button class="btn btn-secondary" onclick="closeHelp()" style="width:100%;margin-top:8px;font-size:11px;">Fermer</button>
+    <button type="button" class="btn btn-secondary" onclick="closeHelp()" style="width:100%;margin-top:8px;font-size:11px;">Fermer</button>
   </div>
 </div>
 
@@ -260,8 +260,8 @@
       réinitialiser les pins sans redémarrage.
     </p>
     <div class="modal-actions">
-      <button class="btn btn-primary" onclick="confirmReboot()">Redémarrer maintenant</button>
-      <button class="btn btn-secondary" onclick="closeRebootPrompt()">Plus tard</button>
+      <button type="button" class="btn btn-primary" onclick="confirmReboot()">Redémarrer maintenant</button>
+      <button type="button" class="btn btn-secondary" onclick="closeRebootPrompt()">Plus tard</button>
     </div>
   </div>
 </div>
@@ -280,12 +280,19 @@ const api = (path, method='GET', body=null) => {
   return fetch(path, o).then(r=>r.json());
 };
 
-const showAlert = (id, msg, ok) => {
+let alertHideTimer = null;
+const showAlert = (id, msg, ok, persistent = false) => {
   const el = document.getElementById(id);
+  if (alertHideTimer) { clearTimeout(alertHideTimer); alertHideTimer = null; }
   el.textContent = msg;
   el.className = 'alert ' + (ok ? 'alert-ok' : 'alert-err');
   el.style.display = 'block';
-  setTimeout(() => el.style.display='none', 3000);
+  if (!persistent) {
+    alertHideTimer = setTimeout(() => {
+      el.style.display = 'none';
+      alertHideTimer = null;
+    }, 3000);
+  }
 };
 
 // ── Conversion Art-Net ────────────────────────────────────────────────────────
@@ -315,7 +322,32 @@ function showRebootPrompt() { document.getElementById('reboot-modal').classList.
 function closeRebootPrompt() { document.getElementById('reboot-modal').classList.remove('open'); }
 function confirmReboot() {
   closeRebootPrompt();
-  api('/api/reboot', 'POST');
+  waitForReconnectAfterReboot('cfg-alert');
+}
+
+/** Après POST /api/reboot : 8 s puis GET /api/status chaque seconde jusqu'à réponse */
+async function waitForReconnectAfterReboot(alertId) {
+  showAlert(alertId, 'Redémarrage en cours…', true, true);
+  try {
+    await api('/api/reboot', 'POST');
+  } catch (e) {
+    /* connexion peut couper avant la réponse */
+  }
+  await new Promise(r => setTimeout(r, 8000));
+  const maxTries = 120;
+  for (let i = 0; i < maxTries; i++) {
+    try {
+      const r = await fetch('/api/status', { method: 'GET' });
+      if (r.ok) {
+        showAlert(alertId, 'ESP32 reconnecté ✓', true);
+        loadStatus();
+        loadConfig();
+        return;
+      }
+    } catch (e) {}
+    await new Promise(r => setTimeout(r, 1000));
+  }
+  showAlert(alertId, '✗ Reconnexion impossible (timeout)', false);
 }
 
 function configNeedsReboot(body) {
@@ -421,7 +453,7 @@ function buildStripPanel(i, s) {
     <div class="sep">
       <div style="display:flex;align-items:center;margin-bottom:8px;">
         <span style="font-size:11px;font-weight:500;color:#666;text-transform:uppercase;letter-spacing:0.05em;">2ème univers</span>
-        <button class="help-btn" onclick="openHelp()">? aide</button>
+        <button type="button" class="help-btn" onclick="openHelp()">? aide</button>
       </div>
 
       <div class="row">
@@ -489,11 +521,11 @@ function buildStripPanel(i, s) {
     <div class="sep">
       <div style="font-size:10px;color:#555;margin-bottom:6px;">Test rapide</div>
       <div class="btn-row">
-        <button class="btn btn-sm" style="background:#7f1d1d;color:#fca5a5;" onclick="quickTest(${i},255,0,0)">Rouge</button>
-        <button class="btn btn-sm" style="background:#14532d;color:#86efac;" onclick="quickTest(${i},0,255,0)">Vert</button>
-        <button class="btn btn-sm" style="background:#1e3a5f;color:#93c5fd;" onclick="quickTest(${i},0,0,255)">Bleu</button>
-        <button class="btn btn-sm btn-secondary" onclick="quickTest(${i},-1,-1,-1)">🌈</button>
-        <button class="btn btn-sm btn-secondary" onclick="quickTest(${i},0,0,0)">Off</button>
+        <button type="button" class="btn btn-sm" style="background:#7f1d1d;color:#fca5a5;" onclick="quickTest(${i},255,0,0)">Rouge</button>
+        <button type="button" class="btn btn-sm" style="background:#14532d;color:#86efac;" onclick="quickTest(${i},0,255,0)">Vert</button>
+        <button type="button" class="btn btn-sm" style="background:#1e3a5f;color:#93c5fd;" onclick="quickTest(${i},0,0,255)">Bleu</button>
+        <button type="button" class="btn btn-sm btn-secondary" onclick="quickTest(${i},-1,-1,-1)">🌈</button>
+        <button type="button" class="btn btn-sm btn-secondary" onclick="quickTest(${i},0,0,0)">Off</button>
       </div>
     </div>
   </div>`;
@@ -882,7 +914,8 @@ function testOff() {
 });
 
 function reboot() {
-  if (confirm('Redémarrer ?')) api('/api/reboot','POST');
+  if (!confirm('Redémarrer ?')) return;
+  waitForReconnectAfterReboot('cfg-alert');
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
