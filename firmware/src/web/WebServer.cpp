@@ -207,6 +207,15 @@ void WebServer::_handlePostTest(AsyncWebServerRequest* req, JsonVariant& json) {
 
     StripController& strip = _leds->getStrip(stripIdx);
 
+    _testMode[stripIdx]           = true;
+    _testModeTime[stripIdx]       = millis();
+    _testModePersistent[stripIdx] = (mode == "rainbow");
+
+    if (mode == "off") {
+        _testMode[stripIdx]           = false;
+        _testModePersistent[stripIdx] = false;
+    }
+
     if (mode == "color") {
         uint8_t r = json["r"] | 255;
         uint8_t g = json["g"] | 0;

@@ -20,6 +20,9 @@ Discovery discovery;
 // ─── État DMX par bande ───────────────────────────────────────────────────────
 bool     dmxActive[MAX_STRIPS]   = { false };
 uint32_t lastDmxTime[MAX_STRIPS] = { 0 };
+bool     testMode[MAX_STRIPS]    = { false };
+uint32_t testModeTime[MAX_STRIPS]= { 0 };
+const uint32_t TEST_MODE_DURATION = 3000; // 3 secondes
 
 // ─── Callback Art-Net ─────────────────────────────────────────────────────────
 void onArtNetData(uint8_t stripIndex, uint8_t* data, uint16_t length) {
@@ -32,8 +35,9 @@ void onArtNetData(uint8_t stripIndex, uint8_t* data, uint16_t length) {
         dmxActive[stripIndex] = true;
     }
 
-    leds.getStrip(stripIndex).applyDMX(data, length);
-    // Ne pas appeler show() ici — on le fait dans la loop()
+    if (!webServer.isTestMode(stripIndex)) {
+        leds.getStrip(stripIndex).applyDMX(data, length);
+    }
 }
 
 // ─── Setup ────────────────────────────────────────────────────────────────────
@@ -123,6 +127,11 @@ void loop() {
         } else {
             effects.getStrip(i).loop();
             needShow = true;  // Effet autonome → besoin de show
+        }
+
+        // Mode test actif → forcer le show
+        if (webServer.isTestMode(i)) {
+            needShow = true;
         }
     }
 

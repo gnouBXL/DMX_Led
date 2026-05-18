@@ -21,6 +21,7 @@ private:
     Effects*       _effects = nullptr;
     WiFiManager*   _wifi    = nullptr;
 
+
     void _setupRoutes();
 
     void _handleGetStatus(AsyncWebServerRequest* req);
@@ -31,4 +32,17 @@ private:
     void _handlePostEffect(AsyncWebServerRequest* req, JsonVariant& json);
     void _handleReboot(AsyncWebServerRequest* req);
     void _handleGetWifiScan(AsyncWebServerRequest* req);
+    
+    bool _testModePersistent[MAX_STRIPS] = { false };
+    bool     _testMode[MAX_STRIPS]    = { false };
+    uint32_t _testModeTime[MAX_STRIPS]= { 0 };
+
+public:
+    bool isTestMode(uint8_t stripIdx) {
+        if (stripIdx >= MAX_STRIPS) return false;
+        if (_testMode[stripIdx] && !_testModePersistent[stripIdx] && millis() - _testModeTime[stripIdx] > 3000) {
+            _testMode[stripIdx] = false;
+        }
+        return _testMode[stripIdx];
+    }
 };

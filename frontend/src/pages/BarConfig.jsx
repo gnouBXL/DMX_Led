@@ -370,11 +370,28 @@ export default function BarConfig({ bar, stripIndex }) {
       <div style={{ borderTop: '1px solid #2a2a2a', paddingTop: 10 }}>
         <div style={{ fontSize: 11, color: '#555', marginBottom: 8 }}>TEST</div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          <button type="button" onClick={(e) => handleTestClick(e, () => void test('color', 255, 0, 0))} style={{ ...btnTest, background: '#7f1d1d', color: '#fca5a5' }}>Rouge</button>
-          <button type="button" onClick={(e) => handleTestClick(e, () => void test('color', 0, 255, 0))} style={{ ...btnTest, background: '#14532d', color: '#86efac' }}>Vert</button>
-          <button type="button" onClick={(e) => handleTestClick(e, () => void test('color', 0, 0, 255))} style={{ ...btnTest, background: '#1e3a5f', color: '#93c5fd' }}>Bleu</button>
-          <button type="button" onClick={(e) => handleTestClick(e, () => void test('rainbow'))} style={{ ...btnTest, background: '#1e1e1e', color: '#a0a0a0' }}>🌈 Rainbow</button>
-          <button type="button" onClick={(e) => handleTestClick(e, () => void test('off'))} style={{ ...btnTest, background: '#1e1e1e', color: '#555' }}>Éteindre</button>
+        <button type="button"
+  onPointerDown={() => test('color', 255, 0, 0)}
+  onPointerUp={() => test('off')}
+  style={{ ...btnTest, background: '#7f1d1d', color: '#fca5a5' }}>Rouge</button>
+
+<button type="button"
+  onPointerDown={() => test('color', 0, 255, 0)}
+  onPointerUp={() => test('off')}
+  style={{ ...btnTest, background: '#14532d', color: '#86efac' }}>Vert</button>
+
+<button type="button"
+  onPointerDown={() => test('color', 0, 0, 255)}
+  onPointerUp={() => test('off')}
+  style={{ ...btnTest, background: '#1e3a5f', color: '#93c5fd' }}>Bleu</button>
+
+<button type="button"
+  onClick={() => test('rainbow')}
+  style={{ ...btnTest, background: '#1e1e1e', color: '#a0a0a0' }}>🌈 Rainbow</button>
+
+<button type="button"
+  onClick={() => test('off')}
+  style={{ ...btnTest, background: '#1e1e1e', color: '#555' }}>Éteindre</button>
         </div>
       </div>
 
