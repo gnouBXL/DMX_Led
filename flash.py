@@ -15,25 +15,11 @@ import requests
 
 GITHUB_API = "https://api.github.com/repos/gnouBXL/DMX_Led/releases/latest"
 
-CHIP_FIRMWARE_MAP = {
-    "ESP32-S3": "firmware-esp32s3.bin",
-    "ESP32-C3": "firmware-esp32c3.bin",
-    "ESP32-S2": "firmware-esp32s2.bin",
-    "ESP32":    "firmware-esp32.bin",
-}
-
-CHIP_LITTLEFS_MAP = {
-    "ESP32-S3": "firmware-esp32s3-littlefs.bin",
-    "ESP32-C3": "firmware-esp32c3-littlefs.bin",
-    "ESP32-S2": "firmware-esp32s2-littlefs.bin",
-    "ESP32":    "firmware-esp32-littlefs.bin",
-}
-
-CHIP_FLASH_ADDR = {
-    "ESP32-S3": {"firmware": "0x0",    "littlefs": "0x670000"},
-    "ESP32-C3": {"firmware": "0x0",    "littlefs": "0x670000"},
-    "ESP32-S2": {"firmware": "0x1000", "littlefs": "0x670000"},
-    "ESP32":    {"firmware": "0x1000", "littlefs": "0x670000"},
+CHIP_BOARD_MAP = {
+    "ESP32-S3": "esp32-s3-devkitc-1",
+    "ESP32-C3": "esp32-c3-devkitm-1",
+    "ESP32-S2": "esp32-s2-devkitm-1",
+    "ESP32":    "esp32-devkitc-1",
 }
 
 def log(msg, color=None):
@@ -141,7 +127,7 @@ def fetch_manifest():
         version = release.get("tag_name", "?")
         log(f"✓ Dernière release : {version}", "green")
         assets = {a["name"]: a["url"] for a in release.get("assets", [])}
-        return version, assets
+        return token, assets, version
     except Exception as e:
         log(f"❌ Impossible de récupérer la release : {e}", "red")
         sys.exit(1)
@@ -190,24 +176,37 @@ def main():
     port    = select_port(ports)
     chip    = detect_chip(esptool, port)
 
-    if chip not in CHIP_FIRMWARE_MAP:
+    if chip not in CHIP_BOARD_MAP:
         log(f"❌ Chip '{chip}' non supporté", "red")
         sys.exit(1)
 
-    version, assets = fetch_manifest()
+    board = CHIP_BOARD_MAP[chip]
+    token, assets, version = fetch_manifest()
 
-    fw_name  = CHIP_FIRMWARE_MAP[chip]
-    lfs_name = CHIP_LITTLEFS_MAP[chip]
-    addrs    = CHIP_FLASH_ADDR[chip]
+    # Lit le manifest.json depuis la release
+    parts = None
+    if "manifest.json" in assets:
+        try:
+            headers = {"Accept": "application/octet-stream"}
+            if token:
+                headers["Authorization"] = f"token {token}"
+            r = requests.get(assets["manifest.json"], headers=headers, allow_redirects=True)
+            manifest_data = r.json()
+            for build in manifest_data.get("builds", []):
+                if build.get("board") == board:
+                    parts = build.get("parts", [])
+                    break
+        except Exception as e:
+            log(f"⚠ Impossible de lire le manifest : {e}", "yellow")
 
-    if fw_name not in assets:
-        log(f"❌ Firmware '{fw_name}' non trouvé dans la release {version}", "red")
-        log(f"   Fichiers disponibles : {list(assets.keys())}", "yellow")
+    if not parts:
+        log(f"⚠ Manifest sans parts pour {board} — abandon", "red")
         sys.exit(1)
 
-    log(f"\n📦 Firmware sélectionné : {fw_name}", "blue")
+    log(f"\n📦 Board : {board}", "blue")
     log(f"   Chip    : {chip}", "blue")
     log(f"   Version : {version}", "blue")
+    log(f"   Parties : {len(parts)} fichiers à flasher", "blue")
 
     confirm = input("\nFlasher maintenant ? (o/n) : ").strip().lower()
     if confirm not in ["o", "y", "oui", "yes"]:
@@ -215,19 +214,15 @@ def main():
         sys.exit(0)
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        fw_path  = os.path.join(tmpdir, fw_name)
-        lfs_path = os.path.join(tmpdir, lfs_name)
-
-        token = get_github_token()
-        log(f"URL: {assets[fw_name]}", "yellow")
-        download_file(assets[fw_name], fw_path, fw_name, token)
-        flash(esptool, port, fw_path, addrs["firmware"])
-
-        if lfs_name in assets:
-            download_file(assets[lfs_name], lfs_path, lfs_name, token)
-            flash(esptool, port, lfs_path, addrs["littlefs"])
-        else:
-            log(f"⚠ Filesystem '{lfs_name}' non trouvé dans la release — ignoré", "yellow")
+        for part in parts:
+            fname  = part["path"]
+            offset = part["offset"]
+            if fname not in assets:
+                log(f"⚠ {fname} non trouvé dans la release — ignoré", "yellow")
+                continue
+            dest = os.path.join(tmpdir, fname)
+            download_file(assets[fname], dest, fname, token)
+            flash(esptool, port, dest, offset)
 
     log("\n✅ ESP32 flashé avec succès !", "green")
     log(f"   Firmware : {version} ({chip})", "green")
