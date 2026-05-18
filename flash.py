@@ -11,6 +11,7 @@ import urllib.request
 import tempfile
 import subprocess
 import shutil
+import requests
 
 GITHUB_API = "https://api.github.com/repos/gnouBXL/DMX_Led/releases/latest"
 
@@ -46,11 +47,15 @@ def check_esptool():
     if shutil.which("esptool.py") or shutil.which("esptool"):
         return shutil.which("esptool.py") or shutil.which("esptool")
     try:
-        subprocess.run([sys.executable, "-m", "esptool", "--version"],
+        result = subprocess.run([sys.executable, "-m", "esptool", "--version"],
                       capture_output=True, check=True)
-        return sys.executable + " -m esptool"
-    except Exception:
+        return f"{sys.executable} -m esptool"
+    except Exception as e:
         pass
+    # Essai avec esptool.py depuis PlatformIO
+    pio_path = os.path.expanduser("~/Library/Python/3.9/bin/esptool.py")
+    if os.path.exists(pio_path):
+        return pio_path
     log("❌ esptool non trouvé. Installez-le avec : pip install esptool", "red")
     sys.exit(1)
 
@@ -100,27 +105,69 @@ def detect_chip(esptool, port):
         log("❌ Timeout — vérifiez que l'ESP32 est bien branché et en mode normal", "red")
         sys.exit(1)
 
+def get_github_token():
+    env_file = os.path.join(os.path.dirname(__file__), '.flash_token')
+    if os.path.exists(env_file):
+        with open(env_file, 'r') as f:
+            token = f.read().strip()
+            if token:
+                return token
+    # Essai sans token d'abord
+    try:
+        req = urllib.request.Request(GITHUB_API)
+        with urllib.request.urlopen(req, timeout=5) as r:
+            return None  # repo public, pas besoin de token
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            log("\n🔒 Repo privé détecté — token GitHub requis", "yellow")
+            log("   Créer un token sur : https://github.com/settings/tokens", "yellow")
+            log("   Permissions requises : repo (read)", "yellow")
+            token = input("\n   Coller le token GitHub : ").strip()
+            with open(env_file, 'w') as f:
+                f.write(token)
+            log(f"✓ Token sauvegardé dans .flash_token", "green")
+            return token
+    return None
+
 def fetch_manifest():
     log("\n📡 Récupération du manifest depuis GitHub Releases...", "blue")
     try:
-        with urllib.request.urlopen(GITHUB_API, timeout=10) as r:
+        token = get_github_token()
+        req = urllib.request.Request(GITHUB_API)
+        if token:
+            req.add_header("Authorization", f"token {token}")
+        with urllib.request.urlopen(req, timeout=10) as r:
             release = json.loads(r.read())
         version = release.get("tag_name", "?")
         log(f"✓ Dernière release : {version}", "green")
-        assets = {a["name"]: a["browser_download_url"] for a in release.get("assets", [])}
+        assets = {a["name"]: a["url"] for a in release.get("assets", [])}
         return version, assets
     except Exception as e:
         log(f"❌ Impossible de récupérer la release : {e}", "red")
         sys.exit(1)
 
-def download_file(url, dest, label):
+def download_file(url, dest, label, token=None):
     log(f"⬇ Téléchargement {label}...", "blue")
-    def progress(count, block_size, total_size):
-        if total_size > 0:
-            pct = min(int(count * block_size * 100 / total_size), 100)
-            bar = "█" * (pct // 5) + "░" * (20 - pct // 5)
-            print(f"\r  [{bar}] {pct}%", end="", flush=True)
-    urllib.request.urlretrieve(url, dest, reporthook=progress)
+    headers = {"Accept": "application/octet-stream"}
+    if token:
+        headers["Authorization"] = f"token {token}"
+    
+    response = requests.get(url, headers=headers, stream=True, allow_redirects=True)
+    response.raise_for_status()
+    
+    total_size = int(response.headers.get('Content-Length', 0))
+    block_size = 8192
+    count = 0
+    
+    with open(dest, 'wb') as f:
+        for chunk in response.iter_content(block_size):
+            if chunk:
+                f.write(chunk)
+                count += 1
+                if total_size > 0:
+                    pct = min(int(count * block_size * 100 / total_size), 100)
+                    bar = "█" * (pct // 5) + "░" * (20 - pct // 5)
+                    print(f"\r  [{bar}] {pct}%", end="", flush=True)
     print()
     log(f"✓ {label} téléchargé", "green")
 
@@ -171,11 +218,13 @@ def main():
         fw_path  = os.path.join(tmpdir, fw_name)
         lfs_path = os.path.join(tmpdir, lfs_name)
 
-        download_file(assets[fw_name], fw_path, fw_name)
+        token = get_github_token()
+        log(f"URL: {assets[fw_name]}", "yellow")
+        download_file(assets[fw_name], fw_path, fw_name, token)
         flash(esptool, port, fw_path, addrs["firmware"])
 
         if lfs_name in assets:
-            download_file(assets[lfs_name], lfs_path, lfs_name)
+            download_file(assets[lfs_name], lfs_path, lfs_name, token)
             flash(esptool, port, lfs_path, addrs["littlefs"])
         else:
             log(f"⚠ Filesystem '{lfs_name}' non trouvé dans la release — ignoré", "yellow")
