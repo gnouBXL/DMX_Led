@@ -43,7 +43,9 @@ jobs:
           mkdir -p release
           cp firmware/.pio/build/esp32-s3-devkitc-1/firmware.bin release/firmware-esp32s3.bin
           cp firmware/.pio/build/esp32-s3-devkitc-1/littlefs.bin release/firmware-esp32s3-littlefs.bin
-          cat > release/manifest.json << 'EOF'
+          cp firmware/.pio/build/esp32-s3-devkitc-1/bootloader.bin release/bootloader-esp32s3.bin
+          cp firmware/.pio/build/esp32-s3-devkitc-1/partitions.bin release/partitions-esp32s3.bin
+          cat > release/manifest.json << 'MANIFEST'
           {
             "version": "${{ steps.version.outputs.VERSION }}",
             "date": "$(date +'%Y-%m-%d')",
@@ -51,12 +53,16 @@ jobs:
               {
                 "chipFamily": "ESP32-S3",
                 "board": "esp32-s3-devkitc-1",
-                "firmware": "firmware-esp32s3.bin",
-                "littlefs": "firmware-esp32s3-littlefs.bin"
+                "parts": [
+                  {"path": "bootloader-esp32s3.bin", "offset": "0x0"},
+                  {"path": "partitions-esp32s3.bin", "offset": "0x8000"},
+                  {"path": "firmware-esp32s3.bin", "offset": "0x10000"},
+                  {"path": "firmware-esp32s3-littlefs.bin", "offset": "0x670000"}
+                ]
               }
             ]
           }
-          EOF
+          MANIFEST
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
