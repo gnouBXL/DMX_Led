@@ -2,6 +2,11 @@
 import { Router } from 'express';
 import fetch from 'node-fetch';
 import store from '../store/store.js';
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const router = Router();
 
@@ -120,10 +125,8 @@ router.get('/flash/asset', async (req, res) => {
 
 function readFlashToken() {
     try {
-        const fs = require('fs')
-        const path = require('path')
-        const tokenFile = path.join(process.cwd(), '..', '.flash_token')
-        return fs.readFileSync(tokenFile, 'utf8').trim()
+        const tokenFile = join(__dirname, '..', '..', '..', '.flash_token')
+        return readFileSync(tokenFile, 'utf8').trim()
     } catch {
         return null
     }

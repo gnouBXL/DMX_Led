@@ -2,6 +2,20 @@ import { useState, useRef } from 'react'
 
 const API = 'http://localhost:3001'
 
+if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
+  window.Buffer = class Buffer extends Uint8Array {
+    static from(data, encoding) {
+      if (typeof data === 'string') {
+        const encoder = new TextEncoder()
+        return encoder.encode(data)
+      }
+      return new Uint8Array(data)
+    }
+    static alloc(size) { return new Uint8Array(size) }
+    static isBuffer(b) { return b instanceof Uint8Array }
+  }
+}
+
 export default function FlashPage() {
   const [step, setStep]         = useState('idle')
   const [log, setLog]           = useState([])
@@ -86,11 +100,10 @@ export default function FlashPage() {
 
       const { ESPLoader, Transport } = await import('https://unpkg.com/esptool-js@0.4.4/bundle.js')
 
-      await port.open({ baudRate: 115200 })
-      const transport = new Transport(port)
+      const transport = new Transport(port, true)
       const loader = new ESPLoader({
         transport,
-        baudrate: 460800,
+        baudrate: 115200,
         terminal: {
           clean:     () => {},
           writeLine: (s) => { if (s.trim()) addLog(s, '#555') },
