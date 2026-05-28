@@ -1,6 +1,8 @@
 import express    from 'express'
 import { createServer } from 'http'
 import cors       from 'cors'
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
 import { createWSServer }     from './ws/wsServer.js'
 import { startDiscovery }     from './discovery/udpDiscovery.js'
 import { startArtNetMonitor, getUniverseBuffer, getActiveUniverses } from './artnet/artnetMonitor.js'
@@ -53,8 +55,6 @@ startDiscovery(wss)
 startArtNetMonitor(wss)
 
 // Servir le frontend React
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 app.use(express.static(join(__dirname, '../../frontend/dist')))
