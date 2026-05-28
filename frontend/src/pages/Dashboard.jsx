@@ -5,6 +5,7 @@ import LedVisualizer from '../components/LedVisualizer'
 import BarConfig from './BarConfig'
 import TouchDesignerSetup from './TouchDesignerSetup'
 import Visualizer from './Visualizer'
+import FlashPage from './FlashPage'
 
 
 export default function Dashboard() {
@@ -31,7 +32,7 @@ export default function Dashboard() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          {['dashboard', 'visualizer', 'realtime', 'touchdesigner'].map(t => (
+          {['dashboard', 'visualizer', 'realtime', 'touchdesigner', 'flash'].map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
               padding: '6px 14px', borderRadius: 6, border: 'none',
               fontSize: 12, fontWeight: 500,
@@ -41,7 +42,8 @@ export default function Dashboard() {
               {t === 'dashboard' ? 'Dashboard'
               : t === 'visualizer' ? '🎥 Visualiseur'
               : t === 'realtime' ? '🔄 Temps réel'
-              : '🎛 TouchDesigner'}
+              : t === 'touchdesigner' ? '🎛 TouchDesigner'
+              : '⚡ Flash'}
             </button>
           ))}
         </div>
@@ -102,6 +104,10 @@ export default function Dashboard() {
 
       {tab === 'touchdesigner' && (
         <TouchDesignerSetup />
+      )}
+
+      {tab === 'flash' && (
+        <FlashPage />
       )}
     </div>
   )

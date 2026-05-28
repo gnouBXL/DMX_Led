@@ -45,22 +45,21 @@ jobs:
           cp firmware/.pio/build/esp32-s3-devkitc-1/littlefs.bin release/firmware-esp32s3-littlefs.bin
           cp firmware/.pio/build/esp32-s3-devkitc-1/bootloader.bin release/bootloader-esp32s3.bin
           cp firmware/.pio/build/esp32-s3-devkitc-1/partitions.bin release/partitions-esp32s3.bin
-          cat > release/manifest.json << 'MANIFEST'
+          VERSION=${{ steps.version.outputs.VERSION }}
+          BASE_URL="https://github.com/gnouBXL/DMX_Led/releases/download/${VERSION}"
+          cat > release/manifest.json << MANIFEST
           {
-            "version": "${{ steps.version.outputs.VERSION }}",
-            "date": "$(date +'%Y-%m-%d')",
-            "builds": [
-              {
-                "chipFamily": "ESP32-S3",
-                "board": "esp32-s3-devkitc-1",
-                "parts": [
-                  {"path": "bootloader-esp32s3.bin", "offset": "0x0"},
-                  {"path": "partitions-esp32s3.bin", "offset": "0x8000"},
-                  {"path": "firmware-esp32s3.bin", "offset": "0x10000"},
-                  {"path": "firmware-esp32s3-littlefs.bin", "offset": "0x670000"}
-                ]
-              }
-            ]
+            "name": "LED Controller",
+            "version": "${VERSION}",
+            "builds": [{
+              "chipFamily": "ESP32-S3",
+              "parts": [
+                {"path": "${BASE_URL}/bootloader-esp32s3.bin", "offset": 0},
+                {"path": "${BASE_URL}/partitions-esp32s3.bin", "offset": 32768},
+                {"path": "${BASE_URL}/firmware-esp32s3.bin", "offset": 65536},
+                {"path": "${BASE_URL}/firmware-esp32s3-littlefs.bin", "offset": 6750208}
+              ]
+            }]
           }
           MANIFEST
 
