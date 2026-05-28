@@ -138,10 +138,41 @@ router.get('/flash/manifest', async (req, res) => {
             'https://github.com/gnouBXL/DMX_Led/releases/latest/download/manifest.json'
         )
         const data = await response.json()
+
+        // Remplace les URLs GitHub par des URLs proxy locales
+        const host = req.headers.host || 'localhost:3001'
+        const protocol = req.headers['x-forwarded-proto'] || 'http'
+        const baseUrl = `${protocol}://${host}/api/flash/bin`
+
+        data.builds = data.builds.map(build => ({
+            ...build,
+            parts: build.parts.map(part => ({
+                ...part,
+                path: `${baseUrl}?url=${encodeURIComponent(part.path)}`
+            }))
+        }))
+
         res.set('Access-Control-Allow-Origin', '*')
         res.json(data)
     } catch (e) {
         res.status(503).json({ error: 'Manifest inaccessible' })
+    }
+})
+
+// GET /api/flash/bin?url=... — proxy téléchargement binaire
+router.get('/flash/bin', async (req, res) => {
+    try {
+        const url = req.query.url
+        if (!url || !url.includes('github.com')) {
+            return res.status(400).json({ error: 'URL invalide' })
+        }
+        const response = await fetch(url, { redirect: 'follow' })
+        if (!response.ok) throw new Error(`GitHub: ${response.status}`)
+        res.set('Content-Type', 'application/octet-stream')
+        res.set('Access-Control-Allow-Origin', '*')
+        response.body.pipe(res)
+    } catch (e) {
+        res.status(503).json({ error: e.message })
     }
 })
 export default router;
