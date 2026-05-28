@@ -1,267 +1,193 @@
 # DMX LED Controller
 
-Système de contrôle de barres LED WS2812B via ESP32, Art-Net et sACN sur Wi-Fi.
+Système de contrôle de barres LED WS2812B via ESP32 et protocole Art-Net/sACN.
 
 ## Architecture
 
 ```
-Logiciel lumière (TouchDesigner / QLC+ / Resolume / grandMA)
-        ↓  Art-Net / sACN — UDP broadcast direct
-   Réseau Wi-Fi
-        ↓  chaque ESP32 reçoit et filtre ses univers
-   ESP32 + WS2812B (1 à 4 bandes par ESP32)
+TouchDesigner / QLC+ / Resolume
+         ↓ Art-Net (UDP broadcast port 6454)
+    ESP32 (firmware)
+         ↓ WS2812B
+      Barres LED
+         ↑ Découverte UDP port 4210
+    Backend Node.js (Raspberry Pi ou Mac)
+         ↑ WebSocket + API REST
+    Frontend React (Dashboard)
 ```
 
-Le serveur central **ne relaie pas** le flux lumière. Il sert uniquement à configurer les barres et visualiser leur état.
+Le flux Art-Net va **directement** du logiciel vers chaque ESP32 — le backend ne relaie pas la lumière, il gère uniquement la configuration et la découverte.
+
+---
 
 ## Structure du projet
 
 ```
 DMX_Led/
-├── firmware/          # Code ESP32 (PlatformIO / Arduino)
-├── backend/           # Serveur Node.js (découverte, API, WebSocket)
-├── frontend/          # Dashboard React (Vite)
-└── docker/            # Déploiement Docker (optionnel)
+├── firmware/          # ESP32 — PlatformIO/Arduino
+├── backend/           # Node.js — API REST, WebSocket, découverte UDP, proxy flash
+├── frontend/          # React + Vite — Dashboard web
+├── pi/                # Scripts Raspberry Pi
+│   ├── install.sh     # Installation complète
+│   ├── update.sh      # Mise à jour
+│   └── GUIDE.md       # Guide étape par étape
+├── .github/workflows/ # GitHub Actions CI/CD
+├── flash.py           # Script Python flash USB multiplateforme
+├── flash_requirements.txt
+├── README.md
+├── HARDWARE.md
+├── DEPLOYMENT.md
+├── TOUCHDESIGNER.md
+└── LICENSE.md
 ```
 
-## Branches
+---
 
-| Branche | Description |
-|---|---|
-| `main` | Version stable — 1 bande LED par ESP32 |
-| `feature/multi-strip` | Version avancée — jusqu'à 4 bandes par ESP32 |
+## Démarrage rapide
 
-## Matériel recommandé
-
-| Composant | Modèle recommandé |
-|---|---|
-| Microcontrôleur | ESP32-S3-DevKitC-1 |
-| LEDs | WS2812B 5V, 60 LED/m |
-| Alimentation | 5V / 10A minimum pour 300 LEDs |
-| Résistance data | 330Ω sur chaque ligne DATA |
-| Condensateur | 1000µF 6.3V entre +5V et GND |
-
-## Prérequis logiciels
-
-- Node.js 20 LTS
-- Python 3.9+
-- PlatformIO Core (`pip3 install platformio`)
-- Git
-
-## Installation rapide
-
-### 1. Cloner le repo
+### Développement local (Mac)
 
 ```bash
-git clone https://github.com/gnouBXL/DMX_Led.git
-cd DMX_Led
+# Terminal 1 — Backend
+cd backend && npm run dev
+
+# Terminal 2 — Frontend
+cd frontend && npm run dev
 ```
 
-### 2. Backend
+Dashboard : http://localhost:5173
+
+### Production (Raspberry Pi)
 
 ```bash
-cd backend
-npm install
-npm run dev
+# Mise à jour complète
+bash /opt/led-controller/pi/update.sh
 ```
 
-Le backend démarre sur `http://localhost:3001`
+Dashboard : http://[IP_PI]:3001
 
-### 3. Frontend
+---
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+## Hardware testé
 
-Le dashboard démarre sur `http://localhost:5173`
+- **ESP32-S3-DevKitC-1** — board principal, 4 bandes LED
+- **Raspberry Pi 4/5** — serveur central
 
-### 4. Firmware ESP32
+### Boards alternatifs recommandés
 
-```bash
-cd firmware
-pio run                          # compiler
-pio run --target upload          # flasher le firmware
-pio run --target uploadfs        # flasher l'interface web locale
-pio device monitor               # voir les logs série
-```
-
-## Capacité du système
-
-| Configuration | Bandes | LEDs max/barre | Canaux DMX max |
+| Board | Bandes | Prix | Note |
 |---|---|---|---|
-| 1 bande / ESP32 (main) | 1 | 300 | 900 (2 univers) |
-| Multi-bandes / ESP32 (feature) | 4 | 300 | 900 par bande |
-| Système complet | 50 ESP32 | 300 | illimité |
+| ESP32-S3 Mini | 4 | ~5€ | Plus compact |
+| XIAO ESP32-S3 | 4 | ~7€ | Le plus petit |
+| ESP32-C3 Mini | 1 | ~3€ | Très économique |
 
-## Configuration DMX
+---
 
-Chaque bande est configurée avec :
+## Firmware ESP32
 
-| Paramètre | Description |
+### Flash depuis le dashboard (recommandé)
+
+1. Branche l'ESP32 via le port **COM/UART** (pas USB natif)
+2. Mets l'ESP32 en mode bootloader : maintiens **BOOT** → appuie **RESET** → relâche **BOOT**
+3. Va sur l'onglet **⚡ Flash** dans le dashboard
+4. Clique **Connect** → choisis **"USB Single Serial"**
+5. Clique **"Install LED Controller"** → attends ~30s
+
+### Flash depuis le terminal (PlatformIO)
+
+```bash
+export PATH="$HOME/Library/Python/3.9/bin:$PATH"
+cd firmware
+pio run --target upload
+pio run --target uploadfs
+pio device monitor --port /dev/cu.usbmodem5B141584811 --baud 115200
+```
+
+### Flash Python (multiplateforme)
+
+```bash
+pip3 install -r flash_requirements.txt
+python3 flash.py
+```
+
+### Après le flash
+
+1. Appuie sur **RESET** pour redémarrer l'ESP32
+2. L'ESP32 crée un réseau Wi-Fi temporaire **LED-SETUP-[nom]**
+3. Connecte-toi à ce réseau (mdp : `ledsetup123`)
+4. Ouvre http://192.168.4.1 dans le navigateur
+5. Va dans **Wi-Fi** → scanne et connecte-toi à ton réseau
+6. L'ESP32 redémarre et rejoint le réseau → apparaît dans le dashboard
+
+> Si l'ESP32 était déjà configuré, il rejoint automatiquement son réseau sans étapes supplémentaires.
+
+---
+
+## GitHub Actions CI/CD
+
+À chaque push sur `main` :
+- Compile le firmware ESP32-S3 avec PlatformIO
+- Publie sur GitHub Releases : `firmware-esp32s3.bin`, `firmware-esp32s3-littlefs.bin`, `bootloader-esp32s3.bin`, `partitions-esp32s3.bin`, `manifest.json`
+
+Le `manifest.json` est au format **ESP Web Tools** avec URLs absolues vers les binaires.
+
+---
+
+## Réseau LED-SHOW (Raspberry Pi)
+
+Le Pi crée un réseau Wi-Fi autonome pour la tournée :
+
+| Élément | Valeur |
 |---|---|
-| Univers DMX | Numéro d'univers Art-Net (0–32767) |
-| Canal de départ | Premier canal DMX utilisé (1–512) |
-| Nombre de LEDs | 1 à 300 |
-| Mode DMX | Full Pixel / Grouped / Full Bar |
-| Taille groupe | LEDs par groupe (mode Grouped) |
-| Luminosité | 0–255 |
-| FPS max | Fréquence de rafraîchissement maximum |
-| Timeout | Délai avant mode autonome (ms) |
-| Univers 2 | 2ème univers pour bandes > 170 LEDs en Full Pixel |
-| Mode univers | Manuel / Continuation / Pixel aligné |
+| Réseau Wi-Fi | LED-SHOW |
+| Mot de passe | ledcontroller2024 |
+| IP du Pi | 192.168.10.1 |
+| Dashboard | http://192.168.10.1:3001 |
 
-### Modes DMX
+### Options réseau
 
-**Full Pixel** — 1 LED = 3 canaux (R, G, B)
+**Option A — Câble Ethernet disponible :**
 ```
-100 LEDs → 300 canaux DMX
-300 LEDs → 900 canaux DMX (2 univers nécessaires)
+Internet → Ethernet → Pi → Wi-Fi interne "LED-SHOW"
 ```
 
-**Grouped** — N LEDs = 3 canaux (R, G, B)
+**Option B — Sans câble (clé Wi-Fi USB) :**
 ```
-100 LEDs, groupe 5 → 20 pixels → 60 canaux DMX
-```
-
-**Full Bar** — toute la barre = 3 canaux (R, G, B)
-```
-N LEDs → 3 canaux DMX
+Internet → Wi-Fi lieu → clé USB Wi-Fi → Pi → Wi-Fi interne "LED-SHOW"
 ```
 
-## Gestion multi-univers
+---
 
-Une bande de 300 LEDs en Full Pixel nécessite 900 canaux DMX. Un univers ne contenant que 512 canaux, il faut 2 univers. Chaque logiciel gère ce découpage différemment :
+## Backlog
 
-| Mode | Logiciel | Comportement |
-|---|---|---|
-| Manuel | TouchDesigner | Tu définis toi-même la LED de départ dans U2 |
-| Continuation | QLC+, grandMA | Canaux continus, une LED peut être coupée entre U1 et U2 |
-| Pixel aligné | Resolume | Skip 1-2 canaux en fin U1, pixels jamais coupés |
+### 🔴 Bugs
+- **Bug rainbow en mode DMX actif** — testMode expire après 3s, DMX reprend
+- **PM2 ne redémarre pas après reboot Pi** — conflit root/user pi
+- **Bug scan Wi-Fi ESP32** — parfois vide, nécessite plusieurs tentatives
+- **Chrome bloque dashboard Pi** — Local Network Access policy (Safari fonctionne)
 
-Le firmware gère automatiquement les trois modes et recolle les données correctement.
+### 🟡 Flash ESP32
+- **OTA / Mise à jour depuis le dashboard** — bouton par carte ESP32, comparaison version, option garder/écraser config (Wi-Fi, nom, bandes LED)
 
-## Protocoles réseau
+### 🟡 Application
+- **Mise à jour serveur depuis l'interface web** — bouton dans le dashboard, logs en temps réel
+- **Détection conflits de canaux** — avertissement si univers/canal déjà utilisé par une autre barre, avec nom de la barre en conflit
+- **Renommer un ESP depuis le dashboard** — sans passer par l'interface locale
+- **PWA / App mobile** — installable sur iPhone/Android
+- **Couleur/effet par défaut configurable** — par bande
+- **Mode studio** — barres configurées sans ESP assigné
+- **Internationalisation (i18n)** — support multi-langues sur toutes les pages
 
-| Protocole | Port | Usage |
-|---|---|---|
-| Art-Net | UDP 6454 | Flux DMX temps réel |
-| sACN / E1.31 | UDP 5568 | Flux DMX temps réel (alternatif) |
-| HTTP | TCP 80 | Interface web locale ESP32 |
-| mDNS | — | Découverte `nom-barre.local` |
-| UDP Discovery | UDP 4210 | Annonce ESP32 → backend |
-| WebSocket | TCP 3001 | Dashboard ↔ backend temps réel |
+### 🟡 Infrastructure
+- **Clé Wi-Fi USB** — Option B réseau LED-SHOW autonome (en attente livraison)
+- **Configuration réseau** — depuis l'interface dashboard
+- **Magic Setup** — détection automatique + config Wi-Fi zéro-clic
 
-## Mode autonome
+### 🟢 Documentation
+- **Illustrations TouchDesigner** — captures d'écran réelles
+- **Pages setup QLC+** — guide de configuration
+- **Pages setup Resolume** — guide de configuration
 
-Si aucun flux Art-Net/sACN n'est reçu pendant le délai configuré (défaut : 5 secondes), chaque bande bascule automatiquement en mode autonome avec des effets locaux. Le retour du signal DMX relance automatiquement le contrôle réseau.
-
-## Effets autonomes disponibles
-
-| ID | Nom | Description |
-|---|---|---|
-| 0 | None | Aucun effet |
-| 1 | Solid | Couleur fixe |
-| 2 | Fade | Fondu entrée/sortie |
-| 3 | Breathing | Respiration douce |
-| 4 | Rainbow | Arc-en-ciel lent |
-| 5 | Chase | Pixel courant |
-| 6 | Strobe | Flash rapide |
-
-## API REST backend
-
-| Méthode | Endpoint | Description |
-|---|---|---|
-| GET | `/api/bars` | Liste toutes les barres détectées |
-| GET | `/api/bars/:ip/config` | Lit la config d'une barre |
-| POST | `/api/bars/:ip/config` | Modifie la config d'une barre |
-| POST | `/api/bars/:ip/test` | Test couleur ou effet |
-| POST | `/api/bars/:ip/reboot` | Redémarre une barre |
-| GET | `/api/ping` | Sanity check |
-
-## API REST ESP32 locale
-
-| Méthode | Endpoint | Description |
-|---|---|---|
-| GET | `/api/status` | État de la barre (IP, RSSI, uptime…) |
-| GET | `/api/config` | Configuration complète |
-| POST | `/api/config` | Modifier la configuration |
-| POST | `/api/wifi` | Configurer le Wi-Fi |
-| POST | `/api/test` | Test LED (color / rainbow / off) |
-| POST | `/api/effect` | Activer un effet autonome |
-| POST | `/api/reboot` | Redémarrer l'ESP32 |
-
-## Compatibilité logiciels lumière
-
-- TouchDesigner (DMX Fixture POP)
-- QLC+
-- Resolume Arena / Avenue
-- grandMA2 / grandMA3
-- Tout logiciel compatible Art-Net ou sACN
-
-## Variables d'environnement frontend
-
-Créer `frontend/.env` :
-
-```
-VITE_API_URL=http://localhost:3001
-VITE_WS_URL=ws://localhost:3001
-```
-
-Pour un déploiement sur Raspberry Pi, remplacer `localhost` par l'IP du Pi.
-
-## Dépannage
-
-**La barre n'apparaît pas dans le dashboard**
-- Vérifier que backend et ESP32 sont sur le même réseau Wi-Fi
-- Vérifier les logs série : `pio device monitor`
-- Vérifier que le port UDP 4210 n'est pas bloqué
-
-**Les LEDs ne répondent pas à l'Art-Net**
-- Vérifier l'univers DMX configuré sur la barre
-- Vérifier que le logiciel lumière envoie en broadcast ou vers l'IP de la barre
-- Vérifier le canal de départ
-- Si bande > 170 LEDs en Full Pixel : vérifier la config multi-univers
-
-**Couleurs décalées autour du point de coupure entre univers**
-- Vérifier que le mode univers correspond à ton logiciel (Manuel/Continuation/Pixel aligné)
-- TouchDesigner : mode Manuel, configurer la LED de départ dans U2
-- QLC+ : mode Continuation
-- Resolume : mode Pixel aligné
-
-**L'ESP32 redémarre en boucle**
-- Problème d'alimentation : vérifier que le 5V est suffisant
-- Vérifier les logs avant le redémarrage dans le moniteur série
-
-**Compilation échoue**
-- Vérifier PlatformIO : `pio --version`
-- Nettoyer et recompiler : `pio run --target clean && pio run`
-
-## Licence
-
-MIT avec attribution obligatoire — © 2026 Laurent Stevens
-
-Libre d'utilisation, modification et distribution. Toute utilisation publique
-ou dérivée doit citer l'auteur original : **Laurent Stevens — DMX LED Controller**
-https://github.com/gnouBXL/DMX_Led
-
-## Backlog — améliorations futures
-
-| Priorité | Amélioration | Description |
-|---|---|---|
-| 🔴 | Scan Wi-Fi dans l'interface ESP32 | Ne pas avoir à taper le SSID manuellement |
-| 🔴 | Support Chrome pour IP locales | Headers `Access-Control-Allow-Private-Network` |
-| 🟡 | Couleur/effet par défaut configurable | Par bande, au lieu du breathing automatique |
-| 🟡 | Proposer redémarrage après sauvegarde | FastLED ne peut pas ajouter des pins dynamiquement |
-| 🟡 | Onglet Temps réel — miniatures cliquables | Si trop lourd d'afficher toutes les bandes |
-| 🟢 | Mode studio | Barres configurées sans ESP assigné |
-| 🟢 | Illustrations TouchDesigner | Captures d'écran réelles dans la page Setup |
-| 🟢 | Pages setup QLC+ et Resolume | Guide de configuration par logiciel |
-| 🟢 | OTA Update | Mise à jour firmware sans câble USB |
-
-## Corrections apportées
-
-- **Bug 3 bandes figées** — `FastLED.show()` appelé une seule fois par cycle de loop (évite les conflits RMT)
-- **Throttle Art-Net** — redistribution WebSocket limitée à 10fps pour éviter la surcharge
-- **Univers NaN** — filtrage des clés non-numériques dans le moniteur d'univers
+### 🟢 Hardware
+- **Support boards alternatifs** — ESP32-S3 Mini, XIAO ESP32-S3, ESP32-C3 Mini
+- **Bonus ESP32-C3 OLED** — affichage IP, statut, QR code
