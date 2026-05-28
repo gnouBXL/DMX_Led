@@ -20,7 +20,6 @@ function Nav() {
 
   return (
     <nav style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-      <Link to="/" style={linkStyle('/')}>Dashboard</Link>
     </nav>
   )
 }
