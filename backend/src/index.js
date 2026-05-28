@@ -52,6 +52,13 @@ startDiscovery(wss)
 // Moniteur Art-Net
 startArtNetMonitor(wss)
 
+// Servir le frontend React
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+app.use(express.static(join(__dirname, '../../frontend/dist')))
+
 server.listen(PORT, () => {
   console.log(`[Backend] Serveur démarré sur http://localhost:${PORT}`)
 })
