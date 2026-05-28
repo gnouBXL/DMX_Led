@@ -131,5 +131,17 @@ function readFlashToken() {
         return null
     }
 }
-
+// GET /api/flash/manifest — proxy manifest pour ESP Web Tools
+router.get('/flash/manifest', async (req, res) => {
+    try {
+        const response = await fetch(
+            'https://github.com/gnouBXL/DMX_Led/releases/latest/download/manifest.json'
+        )
+        const data = await response.json()
+        res.set('Access-Control-Allow-Origin', '*')
+        res.json(data)
+    } catch (e) {
+        res.status(503).json({ error: 'Manifest inaccessible' })
+    }
+})
 export default router;
