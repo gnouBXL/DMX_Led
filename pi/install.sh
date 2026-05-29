@@ -175,7 +175,7 @@ cat > /etc/NetworkManager/conf.d/unmanaged.conf << EOF
 unmanaged-devices=interface-name:$AP_IFACE
 EOF
 
-# Service systemd pour configurer wlan1 au boot
+# Service systemd pour configurer wlan1, IP statique et backend au boot
 cat > /etc/systemd/system/led-show-ap.service << EOF
 [Unit]
 Description=LED-SHOW Access Point Setup
@@ -185,7 +185,7 @@ Wants=hostapd.service
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/bin/bash -c 'ip addr add $WIFI_IP/24 dev $AP_IFACE 2>/dev/null || true && systemctl restart hostapd && systemctl restart dnsmasq'
+ExecStart=/bin/bash -c "sysctl -w net.ipv4.ip_forward=1 && ip addr add $WIFI_IP/24 dev $AP_IFACE 2>/dev/null || true && systemctl restart hostapd && systemctl restart dnsmasq && pm2 start /opt/led-controller/backend/src/index.js --name led-controller 2>/dev/null || pm2 restart led-controller"
 
 [Install]
 WantedBy=multi-user.target
@@ -193,32 +193,6 @@ EOF
 
 systemctl enable led-show-ap.service
 log "Service led-show-ap configuré pour démarrer au boot"
-
-section "Configuration PM2 — démarrage automatique du backend"
-cat > $APP_DIR/ecosystem.config.js << EOF
-module.exports = {
-  apps: [{
-    name: 'led-controller',
-    script: 'src/index.js',
-    cwd: '$APP_DIR/backend',
-    interpreter: 'node',
-    interpreter_args: '--experimental-vm-modules',
-    env: {
-      NODE_ENV: 'production',
-      PORT: 3001
-    },
-    restart_delay: 3000,
-    max_restarts: 10,
-    watch: false,
-  }]
-}
-EOF
-
-cd $APP_DIR
-pm2 start ecosystem.config.js
-pm2 save
-env PATH=$PATH:/usr/bin pm2 startup systemd -u $APP_USER --hp /home/$APP_USER | tail -1 | bash
-log "Backend LED Controller configuré avec PM2"
 
 section "Configuration mDNS (accès via led-controller.local)"
 cat > /etc/avahi/services/led-controller.service << EOF
