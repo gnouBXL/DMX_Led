@@ -42,8 +42,8 @@ APP_USER="pi"
 # Interface Wi-Fi AP (clé USB ou interne)
 # wlan0 = Wi-Fi interne du Pi
 # wlan1 = Clé Wi-Fi USB (pour pont)
-AP_IFACE="wlan0"       # Interface qui crée LED-SHOW
-ETH_IFACE="eth0"       # Interface Ethernet vers internet
+AP_IFACE="wlan1"       # Clé USB Wi-Fi qui crée LED-SHOW
+ETH_IFACE="wlan0"      # Wi-Fi interne connecté à internet
 
 section "Mise à jour du système"
 apt-get update -qq
@@ -154,10 +154,23 @@ else
     log "Projet cloné dans $APP_DIR"
 fi
 
+section "Build du frontend React"
+cd $APP_DIR/frontend
+npm install -q
+npm run build
+log "Frontend buildé"
+
 section "Installation des dépendances Node.js"
 cd $APP_DIR/backend
 npm install -q
 log "Dépendances backend installées"
+
+section "Configuration NetworkManager — ignorer wlan1"
+cat > /etc/NetworkManager/conf.d/unmanaged.conf << EOF
+[keyfile]
+unmanaged-devices=interface-name:$AP_IFACE
+EOF
+log "NetworkManager configuré pour ignorer $AP_IFACE"
 
 section "Configuration PM2 — démarrage automatique du backend"
 cat > $APP_DIR/ecosystem.config.js << EOF
@@ -182,7 +195,7 @@ EOF
 cd $APP_DIR
 pm2 start ecosystem.config.js
 pm2 save
-pm2 startup systemd -u $APP_USER --hp /home/$APP_USER | tail -1 | bash
+env PATH=$PATH:/usr/bin pm2 startup systemd -u $APP_USER --hp /home/$APP_USER | tail -1 | bash
 log "Backend LED Controller configuré avec PM2"
 
 section "Configuration mDNS (accès via led-controller.local)"
