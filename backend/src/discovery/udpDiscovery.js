@@ -5,7 +5,7 @@ import store from '../store/store.js'
 const DISCOVERY_PORT = 4210
 
 export function startDiscovery(wss) {
-    const socket = dgram.createSocket('udp4')
+    const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true })
 
     socket.on('message', async (msg, rinfo) => {
         const text = msg.toString().trim()
@@ -63,7 +63,8 @@ export function startDiscovery(wss) {
         console.error('[Discovery] Erreur socket:', err.message)
     })
 
-    socket.bind(DISCOVERY_PORT, () => {
+    socket.bind(DISCOVERY_PORT, '0.0.0.0', () => {
+        socket.setBroadcast(true)
         console.log(`[Discovery] Écoute UDP sur port ${DISCOVERY_PORT}`)
     })
 
