@@ -112,6 +112,19 @@ interface $AP_IFACE
 EOF
 log "IP statique configurée : $WIFI_IP"
 
+# Configuration cerificat autosigné https
+section "Génération du certificat HTTPS auto-signé"
+# Génère un certificat auto-signé valide 10 ans
+# pour led-controller.local et 192.168.10.1
+# Chrome affichera un avertissement la première fois
+# → cliquer "Avancé" puis "Continuer quand même"
+openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+  -keyout /home/pi/led-controller.local+1-key.pem \
+  -out /home/pi/led-controller.local+1.pem \
+  -subj "/CN=led-controller.local" \
+  -addext "subjectAltName=IP:192.168.10.1,DNS:led-controller.local"
+log "Certificat HTTPS généré (valide 10 ans)"
+
 # Configuration dnsmasq (DHCP + DNS)
 mv /etc/dnsmasq.conf /etc/dnsmasq.conf.bak 2>/dev/null || true
 cat > /etc/dnsmasq.conf << EOF
