@@ -8,6 +8,8 @@ import { startDiscovery }     from './discovery/udpDiscovery.js'
 import { startArtNetMonitor, getUniverseBuffer, getActiveUniverses } from './artnet/artnetMonitor.js'
 import barsRouter from './api/bars.js'
 import store      from './store/store.js'
+import { readFileSync } from 'fs'
+import https from 'https'
 
 const PORT = process.env.PORT || 3001
 
@@ -58,6 +60,19 @@ startArtNetMonitor(wss)
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 app.use(express.static(join(__dirname, '../../frontend/dist')))
+
+// HTTPS
+try {
+  const creds = {
+    cert: readFileSync('/home/pi/led-controller.local+1.pem'),
+    key: readFileSync('/home/pi/led-controller.local+1-key.pem')
+  }
+  https.createServer(creds, app).listen(3443, () => {
+    console.log('[Backend] HTTPS démarré sur port 3443')
+  })
+} catch(e) {
+  console.warn('[Backend] Certificat non trouvé, HTTPS désactivé')
+}
 
 server.listen(PORT, () => {
   console.log(`[Backend] Serveur démarré sur http://localhost:${PORT}`)
