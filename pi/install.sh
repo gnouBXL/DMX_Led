@@ -165,12 +165,24 @@ cd $APP_DIR/backend
 npm install -q
 log "Dépendances backend installées"
 
-section "Configuration NetworkManager — ignorer wlan1"
+section "Configuration NetworkManager — ignorer wlan1 et IP statique"
 cat > /etc/NetworkManager/conf.d/unmanaged.conf << EOF
 [keyfile]
 unmanaged-devices=interface-name:$AP_IFACE
 EOF
-log "NetworkManager configuré pour ignorer $AP_IFACE"
+
+# Script de démarrage pour configurer wlan1 au boot
+cat > /etc/NetworkManager/dispatcher.d/99-led-show << EOF
+#!/bin/bash
+if [ "\$1" = "$AP_IFACE" ] && [ "\$2" = "up" ]; then
+    ip addr add $WIFI_IP/24 dev $AP_IFACE 2>/dev/null || true
+    systemctl restart hostapd
+    systemctl restart dnsmasq
+fi
+EOF
+chmod +x /etc/NetworkManager/dispatcher.d/99-led-show
+
+log "NetworkManager configuré pour ignorer $AP_IFACE avec IP statique au démarrage"
 
 section "Configuration PM2 — démarrage automatique du backend"
 cat > $APP_DIR/ecosystem.config.js << EOF
