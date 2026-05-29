@@ -130,9 +130,13 @@ echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
 sysctl -p /etc/sysctl.conf -q
 
 # Règles iptables pour le NAT
+# Masquerade sur wlan0 (Wi-Fi internet) ET eth0 (Ethernet internet)
 iptables -t nat -A POSTROUTING -o $ETH_IFACE -j MASQUERADE
+iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 iptables -A FORWARD -i $ETH_IFACE -o $AP_IFACE -m state --state RELATED,ESTABLISHED -j ACCEPT
 iptables -A FORWARD -i $AP_IFACE -o $ETH_IFACE -j ACCEPT
+iptables -A FORWARD -i eth0 -o $AP_IFACE -m state --state RELATED,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i $AP_IFACE -o eth0 -j ACCEPT
 
 # Sauvegarde des règles iptables
 netfilter-persistent save
