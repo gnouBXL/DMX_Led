@@ -1,6 +1,6 @@
 #include "LedController.h"
 
-// ─── StripController ──────────────────────────────────────────────────────────
+// ─── StripController ──────────────────────────────────────────────────────────────────────────────
 
 void StripController::begin(StripConfig& config, uint8_t brightness) {
     _config  = &config;
@@ -77,32 +77,31 @@ void StripController::_applyFullBar(uint8_t* data, uint16_t length) {
     fill_solid(leds, ledCount, CRGB(data[0], data[1], data[2]));
 }
 
-// ─── LedController ────────────────────────────────────────────────────────────
+// ─── LedController ──────────────────────────────────────────────────────────────────────────────
 
 void LedController::begin(DeviceConfig& config) {
     _config = &config;
 
-    // Associe chaque buffer à sa bande
-    CRGB* bufs[MAX_STRIPS] = { _buf0, _buf1, _buf2, _buf3 };
-
-    // Pins correspondantes à chaque bande
-    // FastLED nécessite des templates au compile-time pour les pins
-    // On utilise une astuce : on ajoute toutes les bandes actives
     for (uint8_t i = 0; i < MAX_STRIPS; i++) {
-        _strips[i].leds = bufs[i];
+        _strips[i].leds = _bufs[i];
 
         if (!config.strips[i].enabled) {
             _strips[i].active = false;
             continue;
         }
 
-        // Initialise le buffer FastLED selon le GPIO configuré
+        // FastLED requires compile-time pin constants
         uint8_t pin = config.strips[i].pin;
         switch (pin) {
-            case 4: FastLED.addLeds<WS2812B, 4, GRB>(bufs[i], MAX_LEDS_PER_STRIP); break;
-            case 5: FastLED.addLeds<WS2812B, 5, GRB>(bufs[i], MAX_LEDS_PER_STRIP); break;
-            case 6: FastLED.addLeds<WS2812B, 6, GRB>(bufs[i], MAX_LEDS_PER_STRIP); break;
-            case 7: FastLED.addLeds<WS2812B, 7, GRB>(bufs[i], MAX_LEDS_PER_STRIP); break;
+            case 1:  FastLED.addLeds<WS2812B, 1,  GRB>(_bufs[i], MAX_LEDS_PER_STRIP); break;
+            case 2:  FastLED.addLeds<WS2812B, 2,  GRB>(_bufs[i], MAX_LEDS_PER_STRIP); break;
+            case 3:  FastLED.addLeds<WS2812B, 3,  GRB>(_bufs[i], MAX_LEDS_PER_STRIP); break;
+            case 4:  FastLED.addLeds<WS2812B, 4,  GRB>(_bufs[i], MAX_LEDS_PER_STRIP); break;
+            case 5:  FastLED.addLeds<WS2812B, 5,  GRB>(_bufs[i], MAX_LEDS_PER_STRIP); break;
+            case 6:  FastLED.addLeds<WS2812B, 6,  GRB>(_bufs[i], MAX_LEDS_PER_STRIP); break;
+            case 7:  FastLED.addLeds<WS2812B, 7,  GRB>(_bufs[i], MAX_LEDS_PER_STRIP); break;
+            case 8:  FastLED.addLeds<WS2812B, 8,  GRB>(_bufs[i], MAX_LEDS_PER_STRIP); break;
+            case 10: FastLED.addLeds<WS2812B, 10, GRB>(_bufs[i], MAX_LEDS_PER_STRIP); break;
             default:
                 Serial.printf("[LED] GPIO %d non supporté\n", pin);
                 config.strips[i].enabled = false;

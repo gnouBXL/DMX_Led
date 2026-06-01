@@ -44,9 +44,6 @@ private:
     DeviceConfig*    _config = nullptr;
     StripController  _strips[MAX_STRIPS];
 
-    // Buffers LED statiques — un par bande
-    CRGB _buf0[MAX_LEDS_PER_STRIP];
-    CRGB _buf1[MAX_LEDS_PER_STRIP];
-    CRGB _buf2[MAX_LEDS_PER_STRIP];
-    CRGB _buf3[MAX_LEDS_PER_STRIP];
+    // Buffers LED statiques — dimensionnés par MAX_STRIPS
+    CRGB _bufs[MAX_STRIPS][MAX_LEDS_PER_STRIP];
 };
