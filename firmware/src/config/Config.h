@@ -2,32 +2,34 @@
 #include <Preferences.h>
 #include <Arduino.h>
 
-// ─── Limites ──────────────────────────────────────────────────────────────────
+// ─── Limites ─────────────────────────────────────────────────────────────────────────────────
+#ifndef MAX_STRIPS
 #define MAX_STRIPS          4
+#endif
 #define MAX_LEDS_PER_STRIP  300
 
-// ─── GPIO disponibles pour les bandes LED ────────────────────────────────────
+// ─── GPIO disponibles pour les bandes LED ────────────────────────────────────────────
 // RMT canaux 0-3 sur ESP32-S3 DevKitC-1
 #define VALID_PINS_COUNT    4
 static const uint8_t VALID_PINS[VALID_PINS_COUNT] = { 4, 5, 6, 7 };
 
-// ─── Modes DMX ────────────────────────────────────────────────────────────────
+// ─── Modes DMX ────────────────────────────────────────────────────────────────────────────
 #define DMX_MODE_FULL_PIXEL  0
 #define DMX_MODE_GROUPED     1
 #define DMX_MODE_FULL_BAR    2
 
-// ─── Modes univers ────────────────────────────────────────────────────────────
+// ─── Modes univers ────────────────────────────────────────────────────────────────────────────
 #define UNIVERSE_MODE_MANUAL   0
 #define UNIVERSE_MODE_CONT     1
 #define UNIVERSE_MODE_ALIGNED  2
 
-// ─── Valeurs par défaut globales ──────────────────────────────────────────────
+// ─── Valeurs par défaut globales ──────────────────────────────────────────────────────────────
 #define DEFAULT_DEVICE_NAME   "barre-led-1"
 #define DEFAULT_BRIGHTNESS    255
 #define DEFAULT_FPS_MAX       40
 #define DEFAULT_TIMEOUT_MS    5000
 
-// ─── Config d'une bande LED ───────────────────────────────────────────────────
+// ─── Config d'une bande LED ────────────────────────────────────────────────────────────────────
 struct StripConfig {
     bool     enabled;              // bande active ou non
     uint8_t  pin;                  // GPIO data (4, 5, 6 ou 7)
@@ -44,7 +46,7 @@ struct StripConfig {
     uint16_t universe2LedStart;    // LED de départ dans U2 (mode Manuel)
     uint8_t  universeMode;         // Manuel / Continuation / PixelAligned
 
-    // ── Calculs automatiques ──────────────────────────────────────────────────
+    // ── Calculs automatiques ─────────────────────────────────────────────────────────────────
     uint16_t totalChannels() const {
         switch (dmxMode) {
             case DMX_MODE_FULL_PIXEL: return ledCount * 3;
@@ -83,7 +85,7 @@ struct StripConfig {
     }
 };
 
-// ─── Config globale de l'ESP32 ────────────────────────────────────────────────
+// ─── Config globale de l'ESP32 ────────────────────────────────────────────────────────────────
 struct DeviceConfig {
     char    deviceName[32];
     uint8_t brightness;
@@ -96,7 +98,7 @@ struct DeviceConfig {
     StripConfig strips[MAX_STRIPS];     // config de chaque bande
 };
 
-// ─── Classe Config ────────────────────────────────────────────────────────────
+// ─── Classe Config ────────────────────────────────────────────────────────────────────────────────
 class Config {
 public:
     DeviceConfig data;
