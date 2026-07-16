@@ -91,9 +91,10 @@ router.post('/:ip/ota', async (req, res) => {
     const boardType = bar?.boardType || 'S3_MINI'
 
     const FIRMWARE_FILES = {
-        'S3_MINI': 'firmware-esp32-s3-mini.bin',
-        'C3_MINI': 'firmware-esp32-c3-mini.bin',
-        'C3_OLED': 'firmware-esp32-c3-oled.bin',
+        'S3_DEVKITC': 'firmware-esp32s3.bin',
+        'S3_MINI':    'firmware-s3-mini.bin',
+        'C3_MINI':    'firmware-c3-mini.bin',
+        'C3_OLED':    'firmware-c3-oled.bin',
     }
 
     try {
@@ -110,7 +111,7 @@ router.post('/:ip/ota', async (req, res) => {
         const release = await releaseRes.json()
 
         // 2. Trouve le bon binaire selon le type de board
-        const filename = FIRMWARE_FILES[boardType] || FIRMWARE_FILES['S3_MINI']
+        const filename = FIRMWARE_FILES[boardType] || FIRMWARE_FILES['S3_DEVKITC']
         const asset = release.assets.find(a => a.name === filename)
         if (!asset) throw new Error(`${filename} non trouvé dans ${release.tag_name}`)
 
