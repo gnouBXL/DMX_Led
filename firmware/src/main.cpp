@@ -7,6 +7,7 @@
 #include "leds/Effects.h"
 #include "web/WebServer.h"
 #include "network/Discovery.h"
+#include "network/ImprovWifi.h"
 
 // ─── Instances globales ───────────────────────────────────────────────────────
 Config        config;
@@ -15,7 +16,8 @@ ArtNet        artnet;
 LedController leds;
 Effects       effects;
 WebServer     webServer;
-Discovery discovery;
+Discovery     discovery;
+ImprovWifi    improv;
 
 // ─── État DMX par bande ───────────────────────────────────────────────────────
 bool     dmxActive[MAX_STRIPS]   = { false };
@@ -70,6 +72,7 @@ void setup() {
     // 4. Wi-Fi
     wifiManager.begin(config.data);
     discovery.begin(config.data);
+    improv.begin(config);
 
     // 5. Art-Net
     artnet.begin(config.data, onArtNetData);
@@ -85,8 +88,11 @@ void loop() {
     // Wi-Fi
     wifiManager.loop();
 
+    // Improv WiFi (config via USB)
+    improv.loop();
+
     // Discovery UDP
-   discovery.loop();
+    discovery.loop();
 
     // Timeout synchro multi-univers
     artnet.loop();
