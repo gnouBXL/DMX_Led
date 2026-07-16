@@ -51,11 +51,11 @@ function updateBar(ip, info) {
     };
 }
 
-// Marque les barres non vues depuis 10s comme offline
+// Marque les barres non vues depuis 30s comme offline
 function checkOffline() {
     const now = Date.now();
     for (const ip in state.bars) {
-        if (now - state.bars[ip].lastSeen > 10000) {
+        if (now - state.bars[ip].lastSeen > 30000) {
             state.bars[ip].online = false;
         }
     }
