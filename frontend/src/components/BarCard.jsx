@@ -1,5 +1,9 @@
+import { useState } from 'react'
 import StatusBadge from './StatusBadge'
 import { useStore } from '../store/useStore'
+
+const API_BASE = import.meta.env.VITE_API_URL
+  || `http://${window.location.hostname}:3001`
 
 function fromAbsolute(abs) {
   abs = parseInt(abs) || 0
@@ -67,24 +71,49 @@ function StripRow({ strip, index, barIp, isSelected }) {
 
 export default function BarCard({ bar }) {
   const selectedStrip = useStore(s => s.selectedStrip)
+  const [otaState, setOtaState] = useState(null)
+  // null | 'downloading' | 'flashing' | 'rebooting' | 'done' | { error: string }
 
-  // Crée un tableau de 4 slots même si strips est incomplet
   const allStrips = Array.from({ length: 4 }, (_, i) =>
     bar.strips?.[i] || {
-      enabled:         false,
-      pin:             [4, 5, 6, 7][i],
-      name:            `bande-${i + 1}`,
-      ledCount:        100,
-      dmxUniverse:     0,
-      dmxStartChannel: 1,
-      dmxMode:         0,
-      dmxGroupSize:    5,
-      universe2:       0,
-      universe2StartCh: 1,
-      universe2LedStart: 0,
-      universeMode:    0,
+      enabled: false, pin: [4, 5, 6, 7][i],
+      name: `bande-${i + 1}`, ledCount: 100,
+      dmxUniverse: 0, dmxStartChannel: 1,
+      dmxMode: 0, dmxGroupSize: 5,
+      universe2: 0, universe2StartCh: 1,
+      universe2LedStart: 0, universeMode: 0,
     }
   )
+
+  const handleOta = async (e) => {
+    e.stopPropagation()
+    setOtaState('downloading')
+    try {
+      const res = await fetch(`${API_BASE}/api/bars/${bar.ip}/ota`, { method: 'POST' })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || `Erreur ${res.status}`)
+      }
+      const data = await res.json()
+      setOtaState('rebooting')
+      setTimeout(() => setOtaState('done'), 12000)
+      setTimeout(() => setOtaState(null), 17000)
+    } catch (e) {
+      setOtaState({ error: e.message })
+      setTimeout(() => setOtaState(null), 6000)
+    }
+  }
+
+  const otaLabel = otaState === 'downloading' ? '⬇ Téléchargement...'
+    : otaState === 'flashing'    ? '⚡ Flash en cours...'
+    : otaState === 'rebooting'   ? '🔄 Redémarrage...'
+    : otaState === 'done'        ? '✓ Mis à jour !'
+    : otaState?.error            ? `✗ ${otaState.error}`
+    : null
+
+  const otaColor = otaState === 'done' ? '#22c55e'
+    : otaState?.error ? '#ef4444'
+    : '#f59e0b'
 
   return (
     <div style={{
@@ -120,8 +149,31 @@ export default function BarCard({ bar }) {
         />
       ))}
 
-      <div style={{ marginTop: 8, fontSize: 10, color: '#333', textAlign: 'right' }}>
-        firmware {bar.firmware || '—'}
+      {/* Footer firmware + bouton OTA */}
+      <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: 10, color: '#333' }}>
+          {bar.boardType || 'S3_MINI'} · fw {bar.firmwareVersion || bar.firmware || '—'}
+        </span>
+
+        {otaLabel ? (
+          <span style={{ fontSize: 10, color: otaColor, fontWeight: 500 }}>
+            {otaLabel}
+          </span>
+        ) : (
+          <button
+            onClick={handleOta}
+            disabled={!bar.online}
+            style={{
+              fontSize: 10, padding: '3px 10px', borderRadius: 5,
+              border: '1px solid #2563eb', background: 'transparent',
+              color: bar.online ? '#2563eb' : '#333',
+              cursor: bar.online ? 'pointer' : 'not-allowed',
+              transition: 'all 0.15s',
+            }}
+          >
+            ⬆ Mettre à jour
+          </button>
+        )}
       </div>
     </div>
   )

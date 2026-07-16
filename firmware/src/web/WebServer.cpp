@@ -54,6 +54,36 @@ void WebServer::_setupRoutes() {
     _server.on("/api/reboot", HTTP_POST,
         [this](AsyncWebServerRequest* req) { _handleReboot(req); });
 
+    // OTA — mise à jour firmware OTA (body = binaire brut)
+    _server.on("/api/ota", HTTP_POST,
+        [](AsyncWebServerRequest* req) {
+            bool ok = !Update.hasError();
+            Serial.printf("[OTA] Résultat : %s\n", ok ? "OK" : Update.errorString());
+            AsyncWebServerResponse* r = req->beginResponse(
+                ok ? 200 : 500, "application/json",
+                ok ? "{\"ok\":true}" : "{\"error\":\"flash failed\"}"
+            );
+            r->addHeader("Connection", "close");
+            req->send(r);
+            if (ok) { delay(1000); ESP.restart(); }
+        },
+        nullptr,
+        [](AsyncWebServerRequest* req, uint8_t* data, size_t len, size_t index, size_t total) {
+            if (index == 0) {
+                Serial.printf("[OTA] Début : %u bytes\n", total);
+                if (!Update.begin(total > 0 ? total : UPDATE_SIZE_UNKNOWN)) {
+                    Update.printError(Serial);
+                }
+            }
+            if (Update.write(data, len) != len) {
+                Update.printError(Serial);
+            }
+            if (index + len >= total && total > 0) {
+                Update.end(true);
+            }
+        }
+    );
+
     _server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
 
     _server.on("/api/wifi/scan", HTTP_GET,
@@ -63,14 +93,21 @@ void WebServer::_setupRoutes() {
 // ─── GET /api/status ──────────────────────────────────────────────────────────
 void WebServer::_handleGetStatus(AsyncWebServerRequest* req) {
     JsonDocument doc;
-    doc["name"]      = _config->data.deviceName;
-    doc["ip"]        = _wifi->getIP();
-    doc["rssi"]      = _wifi->getRSSI();
-    doc["wifiState"] = (int)_wifi->getState();
-    doc["freeHeap"]  = ESP.getFreeHeap();
-    doc["uptime"]    = millis() / 1000;
-    doc["firmware"]  = "2.0.0";
-    doc["stripCount"]= _config->data.stripCount;
+    #define _FW_STR(x) #x
+    #define FW_STR(x) _FW_STR(x)
+    doc["name"]            = _config->data.deviceName;
+    doc["ip"]              = _wifi->getIP();
+    doc["rssi"]            = _wifi->getRSSI();
+    doc["wifiState"]       = (int)_wifi->getState();
+    doc["freeHeap"]        = ESP.getFreeHeap();
+    doc["uptime"]          = millis() / 1000;
+    doc["firmwareVersion"] = FIRMWARE_VERSION;
+    #ifdef BOARD_TYPE
+    doc["boardType"]       = FW_STR(BOARD_TYPE);
+    #else
+    doc["boardType"]       = "S3_MINI";
+    #endif
+    doc["stripCount"]      = _config->data.stripCount;
 
     String out;
     serializeJson(doc, out);
@@ -81,11 +118,17 @@ void WebServer::_handleGetStatus(AsyncWebServerRequest* req) {
 void WebServer::_handleGetConfig(AsyncWebServerRequest* req) {
     JsonDocument doc;
 
-    doc["deviceName"] = _config->data.deviceName;
-    doc["brightness"] = _config->data.brightness;
-    doc["fpsMax"]     = _config->data.fpsMax;
-    doc["timeoutMs"]  = _config->data.timeoutMs;
-    doc["stripCount"] = _config->data.stripCount;
+    doc["deviceName"]      = _config->data.deviceName;
+    doc["brightness"]      = _config->data.brightness;
+    doc["fpsMax"]          = _config->data.fpsMax;
+    doc["timeoutMs"]       = _config->data.timeoutMs;
+    doc["stripCount"]      = _config->data.stripCount;
+    doc["firmwareVersion"] = FIRMWARE_VERSION;
+    #ifdef BOARD_TYPE
+    doc["boardType"]       = FW_STR(BOARD_TYPE);
+    #else
+    doc["boardType"]       = "S3_MINI";
+    #endif
 
     JsonArray strips = doc["strips"].to<JsonArray>();
 

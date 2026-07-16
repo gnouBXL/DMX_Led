@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import { useStore } from '../store/useStore'
+
+const API_BASE = import.meta.env.VITE_API_URL
+  || `http://${window.location.hostname}:3001`
 import BarCard from '../components/BarCard'
 import LedVisualizer from '../components/LedVisualizer'
 import BarConfig from './BarConfig'
@@ -17,6 +20,23 @@ export default function Dashboard() {
 
   const online  = bars.filter(b => b.online).length
   const offline = bars.length - online
+  const [otaAllState, setOtaAllState] = useState(null)
+
+  const handleUpdateAll = async () => {
+    const targets = bars.filter(b => b.online)
+    if (!targets.length) return
+    setOtaAllState(`0/${targets.length}`)
+    let done = 0
+    for (const bar of targets) {
+      try {
+        await fetch(`${API_BASE}/api/bars/${bar.ip}/ota`, { method: 'POST' })
+      } catch (_) {}
+      done++
+      setOtaAllState(`${done}/${targets.length}`)
+    }
+    setOtaAllState('done')
+    setTimeout(() => setOtaAllState(null), 5000)
+  }
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '20px 16px' }}>
@@ -30,6 +50,22 @@ export default function Dashboard() {
           <p style={{ fontSize: 12, color: '#555', marginTop: 2 }}>
             {online} en ligne · {offline} hors ligne · {bars.length} barres total
           </p>
+          {tab === 'dashboard' && online > 0 && (
+            <button
+              onClick={handleUpdateAll}
+              disabled={!!otaAllState}
+              style={{
+                marginTop: 6, fontSize: 11, padding: '4px 12px', borderRadius: 6,
+                border: '1px solid #2563eb', background: 'transparent',
+                color: otaAllState === 'done' ? '#22c55e' : '#2563eb',
+                cursor: otaAllState ? 'default' : 'pointer',
+              }}
+            >
+              {otaAllState === 'done' ? '✓ Tous mis à jour !'
+               : otaAllState ? `⬆ Mise à jour ${otaAllState}...`
+               : `⬆ Tout mettre à jour (${online})`}
+            </button>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {['dashboard', 'visualizer', 'realtime', 'touchdesigner', 'flash'].map(t => (

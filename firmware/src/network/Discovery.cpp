@@ -18,11 +18,19 @@ void Discovery::loop() {
     }
 }
 
+#define _BT_STR(x) #x
+#define BT_STR(x) _BT_STR(x)
+
 void Discovery::_sendAnnounce() {
     JsonDocument doc;
 
-    doc["name"]        = _config->deviceName;
-    doc["firmware"]    = "2.0.0";
+    doc["name"]            = _config->deviceName;
+    doc["firmwareVersion"] = FIRMWARE_VERSION;
+    #ifdef BOARD_TYPE
+    doc["boardType"]       = BT_STR(BOARD_TYPE);
+    #else
+    doc["boardType"]       = "S3_MINI";
+    #endif
     doc["ledCount"]    = _config->strips[0].ledCount;
     doc["dmxUniverse"] = _config->strips[0].dmxUniverse;
     doc["dmxStartChannel"] = _config->strips[0].dmxStartChannel;

@@ -84,6 +84,72 @@ router.post('/:ip/reboot', async (req, res) => {
     }
 });
 
+// POST /api/bars/:ip/ota — met à jour le firmware d'une barre via OTA
+router.post('/:ip/ota', async (req, res) => {
+    const { ip } = req.params
+    const bar = store.getBars().find(b => b.ip === ip)
+    const boardType = bar?.boardType || 'S3_MINI'
+
+    const FIRMWARE_FILES = {
+        'S3_MINI': 'firmware-esp32-s3-mini.bin',
+        'C3_MINI': 'firmware-esp32-c3-mini.bin',
+        'C3_OLED': 'firmware-esp32-c3-oled.bin',
+    }
+
+    try {
+        // 1. Dernière release GitHub
+        const token = process.env.GITHUB_TOKEN || readFlashToken()
+        const ghHeaders = { 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'DMX-Led-OTA' }
+        if (token) ghHeaders['Authorization'] = `token ${token}`
+
+        const releaseRes = await fetch(
+            'https://api.github.com/repos/gnouBXL/DMX_Led/releases/latest',
+            { headers: ghHeaders, timeout: 10000 }
+        )
+        if (!releaseRes.ok) throw new Error(`GitHub API: ${releaseRes.status}`)
+        const release = await releaseRes.json()
+
+        // 2. Trouve le bon binaire selon le type de board
+        const filename = FIRMWARE_FILES[boardType] || FIRMWARE_FILES['S3_MINI']
+        const asset = release.assets.find(a => a.name === filename)
+        if (!asset) throw new Error(`${filename} non trouvé dans ${release.tag_name}`)
+
+        console.log(`[OTA] ${ip} (${boardType}) → ${filename} v${release.tag_name}`)
+
+        // 3. Télécharge le firmware depuis GitHub
+        const fwHeaders = { 'Accept': 'application/octet-stream', 'User-Agent': 'DMX-Led-OTA' }
+        if (token) fwHeaders['Authorization'] = `token ${token}`
+
+        const fwRes = await fetch(asset.browser_download_url, {
+            headers: fwHeaders, redirect: 'follow', timeout: 30000,
+        })
+        if (!fwRes.ok) throw new Error(`Téléchargement échoué: ${fwRes.status}`)
+
+        const fwBuffer = Buffer.from(await fwRes.arrayBuffer())
+        console.log(`[OTA] Firmware téléchargé: ${fwBuffer.length} bytes`)
+
+        // 4. Envoie le firmware vers l'ESP
+        const espRes = await fetch(`http://${ip}/api/ota`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/octet-stream',
+                'Content-Length': String(fwBuffer.length),
+            },
+            body: fwBuffer,
+            timeout: 60000,
+        })
+        if (!espRes.ok) throw new Error(`ESP OTA: ${espRes.status}`)
+        await espRes.json()
+
+        console.log(`[OTA] ${ip} flashé avec succès → redémarrage`)
+        res.json({ ok: true, version: release.tag_name, size: fwBuffer.length, ip, boardType })
+
+    } catch (e) {
+        console.error(`[OTA] Erreur ${ip}:`, e.message)
+        res.status(500).json({ error: e.message })
+    }
+})
+
 // GET /api/flash/releases/latest — retourne la dernière release GitHub
 router.get('/flash/releases/latest', async (req, res) => {
     try {

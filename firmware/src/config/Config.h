@@ -8,6 +8,11 @@
 #endif
 #define MAX_LEDS_PER_STRIP  300
 
+// ─── Version firmware ─────────────────────────────────────────────────────────
+#ifndef FIRMWARE_VERSION
+#define FIRMWARE_VERSION "2.1.0"
+#endif
+
 // ─── GPIO disponibles pour les bandes LED ────────────────────────────────────────────
 // RMT canaux 0-3 sur ESP32-S3 DevKitC-1
 #define VALID_PINS_COUNT    4

@@ -4,6 +4,7 @@
 #include <AsyncJson.h>
 #include <LittleFS.h>
 #include <ArduinoJson.h>
+#include <Update.h>
 #include "../config/Config.h"
 #include "../leds/LedController.h"
 #include "../leds/Effects.h"
