@@ -113,6 +113,8 @@ void LedController::begin(DeviceConfig& config) {
 
     FastLED.setBrightness(config.brightness);
     FastLED.setMaxRefreshRate(config.fpsMax);
+    // Limite la consommation à 4A sur 5V pour éviter les brownouts
+    FastLED.setMaxPowerInVoltsAndMilliamps(5, 4000);
 
     Serial.printf("[LED] %d bande(s) initialisée(s)\n", config.stripCount);
 }
