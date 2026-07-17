@@ -34,6 +34,7 @@ uint8_t ImprovWifi::_checksum(const uint8_t* buf, size_t len) {
 }
 
 void ImprovWifi::_sendPacket(uint8_t type, const uint8_t* data, size_t len) {
+    if (!Serial) return; // pas de host USB connecté
     uint8_t hdr[9];
     memcpy(hdr, HDR, 6);
     hdr[6] = 1;            // version

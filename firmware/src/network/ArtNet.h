@@ -25,6 +25,13 @@ struct StripUniverse {
     uint32_t u2Time   = 0;
 };
 
+// Buffer intermédiaire pour découpler le callback WiFi du loop principal
+struct PendingFrame {
+    uint8_t  buf[ARTNET_BUFFER_SIZE];
+    uint16_t len   = 0;
+    bool     dirty = false;
+};
+
 class ArtNet {
 public:
     void begin(DeviceConfig& config, ArtNetCallback callback);
@@ -40,8 +47,11 @@ private:
     AsyncUDP       _udp;
     ArtNetCallback _callback;
 
-    // Un état par bande
     StripUniverse  _strips[MAX_STRIPS];
+
+    // Frames en attente — écrites depuis la tâche WiFi, lues dans loop()
+    PendingFrame   _pending[MAX_STRIPS];
+    portMUX_TYPE   _mux = portMUX_INITIALIZER_UNLOCKED;
 
     bool     _receiving   = false;
     uint32_t _lastPacket  = 0;

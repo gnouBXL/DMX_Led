@@ -42,7 +42,7 @@ void ArtNet::stop() {
 }
 
 void ArtNet::loop() {
-    // Timeout synchro U1+U2 pour chaque bande
+    // Timeout synchro U1+U2 pour chaque bande (dans la tâche WiFi — ok)
     for (uint8_t i = 0; i < MAX_STRIPS; i++) {
         if (!_config->strips[i].enabled) continue;
         if (_config->strips[i].universe2 == 0) continue;
@@ -59,6 +59,26 @@ void ArtNet::loop() {
                 su.u1Ready = true;
                 _tryMergeAndApply(i);
             }
+        }
+    }
+
+    // Dispatch des frames en attente depuis le loop principal (thread-safe)
+    for (uint8_t i = 0; i < MAX_STRIPS; i++) {
+        bool hasPending = false;
+        uint8_t  buf[ARTNET_BUFFER_SIZE];
+        uint16_t len = 0;
+
+        taskENTER_CRITICAL(&_mux);
+        if (_pending[i].dirty) {
+            memcpy(buf, _pending[i].buf, _pending[i].len);
+            len = _pending[i].len;
+            _pending[i].dirty = false;
+            hasPending = true;
+        }
+        taskEXIT_CRITICAL(&_mux);
+
+        if (hasPending && _callback) {
+            _callback(i, buf, len);
         }
     }
 }
@@ -91,11 +111,14 @@ void ArtNet::_handlePacket(AsyncUDPPacket& packet) {
             su.u1Time  = millis();
 
             if (sc.universe2 == 0) {
-                // Pas de 2ème univers → applique directement
                 uint8_t  merged[ARTNET_BUFFER_SIZE];
                 uint16_t mergedLen = 0;
                 _buildMergedBuffer(i, merged, mergedLen);
-                if (_callback) _callback(i, merged, mergedLen);
+                taskENTER_CRITICAL(&_mux);
+                memcpy(_pending[i].buf, merged, mergedLen);
+                _pending[i].len   = mergedLen;
+                _pending[i].dirty = true;
+                taskEXIT_CRITICAL(&_mux);
             } else {
                 _tryMergeAndApply(i);
             }
@@ -118,8 +141,13 @@ void ArtNet::_tryMergeAndApply(uint8_t stripIndex) {
     uint16_t mergedLen = 0;
     _buildMergedBuffer(stripIndex, merged, mergedLen);
 
-    if (_callback && mergedLen > 0)
-        _callback(stripIndex, merged, mergedLen);
+    if (mergedLen > 0) {
+        taskENTER_CRITICAL(&_mux);
+        memcpy(_pending[stripIndex].buf, merged, mergedLen);
+        _pending[stripIndex].len   = mergedLen;
+        _pending[stripIndex].dirty = true;
+        taskEXIT_CRITICAL(&_mux);
+    }
 
     su.u1Ready = false;
     su.u2Ready = false;
