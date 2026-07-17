@@ -9,6 +9,7 @@ import BarConfig from './BarConfig'
 import TouchDesignerSetup from './TouchDesignerSetup'
 import Visualizer from './Visualizer'
 import FlashPage from './FlashPage'
+import PiSettings from './PiSettings'
 
 
 export default function Dashboard() {
@@ -68,7 +69,7 @@ export default function Dashboard() {
           )}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          {['dashboard', 'visualizer', 'realtime', 'touchdesigner', 'flash'].map(t => (
+          {['dashboard', 'visualizer', 'realtime', 'touchdesigner', 'flash', 'pi'].map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
               padding: '6px 14px', borderRadius: 6, border: 'none',
               fontSize: 12, fontWeight: 500,
@@ -79,7 +80,8 @@ export default function Dashboard() {
               : t === 'visualizer' ? '🎥 Visualiseur'
               : t === 'realtime' ? '🔄 Temps réel'
               : t === 'touchdesigner' ? '🎛 TouchDesigner'
-              : '⚡ Flash'}
+              : t === 'flash' ? '⚡ Flash'
+              : '🍓 Pi'}
             </button>
           ))}
         </div>
@@ -144,6 +146,10 @@ export default function Dashboard() {
 
       {tab === 'flash' && (
         <FlashPage />
+      )}
+
+      {tab === 'pi' && (
+        <PiSettings />
       )}
     </div>
   )

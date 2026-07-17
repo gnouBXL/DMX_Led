@@ -6,8 +6,9 @@ import { dirname, join } from 'path'
 import { createWSServer }     from './ws/wsServer.js'
 import { startDiscovery }     from './discovery/udpDiscovery.js'
 import { startArtNetMonitor, getUniverseBuffer, getActiveUniverses } from './artnet/artnetMonitor.js'
-import barsRouter from './api/bars.js'
-import store      from './store/store.js'
+import barsRouter   from './api/bars.js'
+import systemRouter from './api/system.js'
+import store        from './store/store.js'
 import { readFileSync } from 'fs'
 import https from 'https'
 
@@ -23,6 +24,7 @@ app.use(express.json())
 
 // Routes API
 app.use('/api/bars', barsRouter)
+app.use('/api/system', systemRouter)
 app.use('/api', (req, res, next) => {
   if (req.path.startsWith('/flash')) {
     return barsRouter(req, res, next)
