@@ -1,6 +1,6 @@
 // API système — info et mise à jour du Pi
 import { Router } from 'express'
-import { execSync, spawn } from 'child_process'
+import { execSync, spawn, execFile } from 'child_process'
 import { readFileSync, existsSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
@@ -60,6 +60,32 @@ router.post('/update', (req, res) => {
     } catch (e) {
         res.status(500).json({ error: e.message })
     }
+})
+
+// GET /api/system/wifi — statut WiFi actuel
+router.get('/wifi', (req, res) => {
+    const ssid = safeExec('nmcli -t -f active,ssid dev wifi | grep "^yes" | cut -d: -f2') || ''
+    const ip   = safeExec('ip -4 addr show wlan0 | grep inet | awk \'{print $2}\' | cut -d/ -f1') || ''
+    res.json({ ssid, ip, connected: !!ssid })
+})
+
+// POST /api/system/wifi — configure le WiFi
+router.post('/wifi', (req, res) => {
+    const { ssid, password } = req.body
+    if (!ssid) return res.status(400).json({ error: 'SSID manquant' })
+    if (process.platform !== 'linux') {
+        return res.status(200).json({ ok: true, simulated: true })
+    }
+
+    // execFile évite toute injection de commande
+    execFile('sudo', ['nmcli', 'dev', 'wifi', 'connect', ssid, 'password', password || ''],
+        { timeout: 20000 },
+        (err, stdout, stderr) => {
+            if (err) return res.status(500).json({ error: stderr || err.message })
+            const ip = safeExec('ip -4 addr show wlan0 | grep inet | awk \'{print $2}\' | cut -d/ -f1') || ''
+            res.json({ ok: true, ip })
+        }
+    )
 })
 
 // POST /api/system/reboot — redémarre le Pi

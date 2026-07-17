@@ -4,15 +4,23 @@ const API_BASE = import.meta.env.VITE_API_URL
   || `http://${window.location.hostname}:3001`
 
 export default function PiSettings() {
-  const [info, setInfo]         = useState(null)
+  const [info, setInfo]               = useState(null)
   const [updateState, setUpdateState] = useState(null)
-  // null | 'updating' | 'done' | { error }
+  const [wifi, setWifi]               = useState(null)
+  const [wifiForm, setWifiForm]       = useState({ ssid: '', password: '' })
+  const [wifiState, setWifiState]     = useState(null)
+  // null | 'connecting' | 'done' | { error }
 
   useEffect(() => {
     fetch(`${API_BASE}/api/system/info`)
       .then(r => r.json())
       .then(setInfo)
       .catch(() => setInfo(null))
+
+    fetch(`${API_BASE}/api/system/wifi`)
+      .then(r => r.json())
+      .then(setWifi)
+      .catch(() => setWifi(null))
   }, [])
 
   const handleUpdate = async () => {
@@ -26,6 +34,27 @@ export default function PiSettings() {
       setUpdateState('done') // restart coupe la connexion = normal
       setTimeout(() => window.location.reload(), 35000)
     }
+  }
+
+  const handleWifi = async (e) => {
+    e.preventDefault()
+    if (!wifiForm.ssid) return
+    setWifiState('connecting')
+    try {
+      const res = await fetch(`${API_BASE}/api/system/wifi`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(wifiForm),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setWifi({ ssid: wifiForm.ssid, ip: data.ip, connected: true })
+      setWifiState('done')
+      setWifiForm(f => ({ ...f, password: '' }))
+    } catch (err) {
+      setWifiState({ error: err.message })
+    }
+    setTimeout(() => setWifiState(null), 5000)
   }
 
   const handleReboot = async () => {
@@ -65,6 +94,60 @@ export default function PiSettings() {
         ) : (
           <div style={{ fontSize: 12, color: '#555' }}>Chargement...</div>
         )}
+      </div>
+
+      {/* WiFi */}
+      <div style={{
+        background: '#141414', border: '1px solid #2a2a2a',
+        borderRadius: 10, padding: 20, marginBottom: 16,
+      }}>
+        <div style={{ fontSize: 12, fontWeight: 500, color: '#e0e0e0', marginBottom: 4 }}>
+          WiFi
+        </div>
+        {wifi && (
+          <div style={{ fontSize: 11, color: wifi.connected ? '#22c55e' : '#555', marginBottom: 14 }}>
+            {wifi.connected ? `Connecté à ${wifi.ssid} — ${wifi.ip}` : 'Non connecté'}
+          </div>
+        )}
+        <form onSubmit={handleWifi} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <input
+            type="text"
+            placeholder="Nom du réseau (SSID)"
+            value={wifiForm.ssid}
+            onChange={e => setWifiForm(f => ({ ...f, ssid: e.target.value }))}
+            style={inputStyle}
+          />
+          <input
+            type="password"
+            placeholder="Mot de passe"
+            value={wifiForm.password}
+            onChange={e => setWifiForm(f => ({ ...f, password: e.target.value }))}
+            style={inputStyle}
+          />
+          {wifiState === 'connecting' && (
+            <div style={{ fontSize: 11, color: '#f59e0b' }}>⏳ Connexion en cours (~15s)...</div>
+          )}
+          {wifiState === 'done' && (
+            <div style={{ fontSize: 11, color: '#22c55e' }}>✓ Connecté !</div>
+          )}
+          {wifiState?.error && (
+            <div style={{ fontSize: 11, color: '#ef4444' }}>✗ {wifiState.error}</div>
+          )}
+          <button
+            type="submit"
+            disabled={!!wifiState || !wifiForm.ssid}
+            style={{
+              padding: '8px 20px', borderRadius: 6, border: 'none',
+              background: (wifiState || !wifiForm.ssid) ? '#1a1a1a' : '#2563eb',
+              color: (wifiState || !wifiForm.ssid) ? '#555' : '#fff',
+              fontSize: 12, fontWeight: 500,
+              cursor: (wifiState || !wifiForm.ssid) ? 'not-allowed' : 'pointer',
+              alignSelf: 'flex-start',
+            }}
+          >
+            Connecter au WiFi
+          </button>
+        </form>
       </div>
 
       {/* Mise à jour */}
@@ -126,6 +209,12 @@ export default function PiSettings() {
       </div>
     </div>
   )
+}
+
+const inputStyle = {
+  padding: '8px 10px', borderRadius: 6,
+  border: '1px solid #2a2a2a', background: '#0f0f0f',
+  color: '#e0e0e0', fontSize: 12, outline: 'none',
 }
 
 function InfoRow({ label, value, mono }) {
