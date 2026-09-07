@@ -71,6 +71,14 @@ npm run dist          # → build pour la plateforme courante
 
 Les binaires sortent dans `desktop/release/`.
 
+### Via GitHub Actions
+
+Le workflow [`build-desktop.yml`](../.github/workflows/build-desktop.yml)
+build l'app sur macOS, Windows et Linux à chaque push sur `main` (ou
+déclenchement manuel depuis l'onglet **Actions**). Les binaires sont
+disponibles en artefacts téléchargeables sur la page du run — pas besoin
+d'un Mac pour obtenir le `.dmg`.
+
 > **macOS non signé** : sans certificat Apple Developer, l'app générée
 > déclenchera l'avertissement Gatekeeper ("développeur non identifié").
 > Clic droit → Ouvrir la première fois pour la lancer. La signature +

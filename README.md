@@ -148,6 +148,12 @@ python3 flash.py
 
 Le `manifest.json` est au format **ESP Web Tools** avec URLs absolues vers les binaires.
 
+**App Desktop** (`.github/workflows/build-desktop.yml`) — sur push (`main`),
+pull request touchant `desktop/`/`backend/`/`frontend/`, ou déclenchement
+manuel : build l'app desktop sur runners macOS, Windows et Linux, publiée en
+artefacts téléchargeables (onglet **Actions** du run) — pas de release
+GitHub automatique (binaires non signés).
+
 ---
 
 ## Réseau LED-SHOW (Raspberry Pi)

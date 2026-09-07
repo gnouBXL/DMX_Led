@@ -1,0 +1,63 @@
+name: Build Desktop App
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'desktop/**'
+      - 'backend/**'
+      - 'frontend/**'
+      - '.github/workflows/build-desktop.yml'
+  pull_request:
+    paths:
+      - 'desktop/**'
+      - 'backend/**'
+      - 'frontend/**'
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            script: dist:mac
+            artifact: macos
+            path: |
+              desktop/release/*.dmg
+              desktop/release/*.zip
+          - os: windows-latest
+            script: dist:win
+            artifact: windows
+            path: desktop/release/*.exe
+          - os: ubuntu-latest
+            script: dist
+            artifact: linux
+            path: desktop/release/*.AppImage
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install desktop dependencies
+        working-directory: desktop
+        run: npm install
+
+      - name: Build app (${{ matrix.artifact }})
+        working-directory: desktop
+        run: npm run ${{ matrix.script }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dmx-led-desktop-${{ matrix.artifact }}
+          path: ${{ matrix.path }}
+          if-no-files-found: error
+          retention-days: 30
