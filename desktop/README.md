@@ -79,11 +79,31 @@ déclenchement manuel depuis l'onglet **Actions**). Les binaires sont
 disponibles en artefacts téléchargeables sur la page du run — pas besoin
 d'un Mac pour obtenir le `.dmg`.
 
-> **macOS non signé** : sans certificat Apple Developer, l'app générée
-> déclenchera l'avertissement Gatekeeper ("développeur non identifié").
-> Clic droit → Ouvrir la première fois pour la lancer. La signature +
-> notarization (nécessite un compte Apple Developer) pourra être ajoutée
-> plus tard dans `package.json` → `build.mac`.
+> **macOS non signé** : sans certificat Apple Developer (payant), l'app est
+> signée en **ad-hoc** au build (`scripts/afterSignAdHoc.js`, hook
+> `afterSign`) — nécessaire pour que le binaire **arm64/Apple Silicon**
+> démarre du tout (macOS refuse d'exécuter du code arm64 non signé, même
+> ad-hoc, avec l'erreur *"l'app est endommagée"*). Gatekeeper affichera
+> quand même l'avertissement "développeur non identifié" : **clic droit →
+> Ouvrir** la première fois suffit.
+>
+> Si vous avez déjà téléchargé une version buildée **avant** ce correctif et
+> que macOS dit *"est endommagée et ne peut pas être ouverte"*, l'app n'a
+> aucune signature — supprimez l'attribut de quarantaine manuellement :
+> ```bash
+> xattr -cr "/Applications/DMX LED Controller.app"
+> ```
+> (adapter le chemin si l'app n'a pas été déplacée dans `/Applications`),
+> puis relancez-la. Ou plus simple : téléchargez un nouveau build depuis
+> [Actions](../.github/workflows/build-desktop.yml), il sera signé ad-hoc.
+>
+> La signature + notarization complètes (nécessitent un compte Apple
+> Developer) pourront être ajoutées plus tard dans `package.json` →
+> `build.mac` (`identity`, `notarize`).
+>
+> **Puce M1/M2/M3 (Apple Silicon)** → prendre le fichier `arm64`
+> (`DMX LED Controller-*-arm64.dmg`). **Mac Intel** → celui sans suffixe ou
+> `x64`.
 >
 > **Icônes** : par défaut, l'icône Electron générique est utilisée. Pour une
 > icône personnalisée, ajouter `desktop/build/icon.icns` (Mac) et
