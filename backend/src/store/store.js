@@ -4,7 +4,9 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const CONFIG_PATH = join(__dirname, '../../config/bars.json');
+// Surchargeable (app desktop) pour écrire dans un dossier utilisateur inscriptible
+// plutôt que dans le bundle de l'app, en lecture seule une fois installée.
+const CONFIG_PATH = process.env.BARS_CONFIG_PATH || join(__dirname, '../../config/bars.json');
 
 // État en mémoire
 const state = {

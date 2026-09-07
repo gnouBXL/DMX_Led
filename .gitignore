@@ -3,6 +3,9 @@ node_modules/
 dist/
 .env
 
+# App desktop (Electron)
+desktop/release/
+
 # PlatformIO
 firmware/.pio/
 firmware/.vscode/

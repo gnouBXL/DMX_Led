@@ -11,7 +11,7 @@ TouchDesigner / QLC+ / Resolume
          ↓ WS2812B
       Barres LED
          ↑ Découverte UDP port 4210
-    Backend Node.js (Raspberry Pi ou Mac)
+    Backend Node.js (Raspberry Pi, Mac/Windows en local, ou app desktop)
          ↑ WebSocket + API REST
     Frontend React (Dashboard)
 ```
@@ -27,6 +27,8 @@ DMX_Led/
 ├── firmware/          # ESP32 — PlatformIO/Arduino
 ├── backend/           # Node.js — API REST, WebSocket, découverte UDP, proxy flash
 ├── frontend/          # React + Vite — Dashboard web
+├── desktop/           # App Electron (Mac/Windows) — backend + dashboard packagés, sans Pi
+│   └── README.md      # Dev & build de l'app desktop
 ├── pi/                # Scripts Raspberry Pi
 │   ├── install.sh     # Installation complète
 │   ├── update.sh      # Mise à jour
@@ -56,6 +58,21 @@ cd frontend && npm run dev
 ```
 
 Dashboard : http://localhost:5173
+
+### App Desktop (Mac/Windows, sans Raspberry Pi)
+
+Pour configurer et piloter les ESP32 sans dépendre d'un Raspberry Pi allumé sur
+le réseau, une app de bureau (Electron) embarque le backend et le dashboard
+dans un seul exécutable double-cliquable (`.app` sur Mac, `.exe` sur Windows).
+
+```bash
+cd desktop
+npm install
+npm run dist:mac   # ou npm run dist:win
+```
+
+Voir [`desktop/README.md`](desktop/README.md) pour le détail (dev, build,
+signature macOS, roadmap Android/iOS).
 
 ### Production (Raspberry Pi)
 
@@ -173,7 +190,9 @@ Internet → Wi-Fi lieu → clé USB Wi-Fi → Pi → Wi-Fi interne "LED-SHOW"
 - **Mise à jour serveur depuis l'interface web** — bouton dans le dashboard, logs en temps réel
 - **Détection conflits de canaux** — avertissement si univers/canal déjà utilisé par une autre barre, avec nom de la barre en conflit
 - **Renommer un ESP depuis le dashboard** — sans passer par l'interface locale
-- **PWA / App mobile** — installable sur iPhone/Android
+- **PWA / App mobile (Android/iOS)** — installable sur iPhone/Android ; app
+  desktop (Mac/Windows) déjà disponible dans `desktop/`, voir
+  [roadmap mobile](desktop/README.md#roadmap-mobile-android--ios)
 - **Couleur/effet par défaut configurable** — par bande
 - **Mode studio** — barres configurées sans ESP assigné
 - **Internationalisation (i18n)** — support multi-langues sur toutes les pages

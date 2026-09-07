@@ -1,0 +1,64 @@
+{
+  "name": "dmx-led-desktop",
+  "productName": "DMX LED Controller",
+  "version": "1.0.0",
+  "description": "Configuration et pilotage des barres LED ESP32 sans Raspberry Pi — app de bureau Mac/Windows",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "build:frontend": "cd ../frontend && npm install && npm run build",
+    "build:backend": "cd ../backend && npm install --omit=dev",
+    "prepare:app": "npm run build:frontend && npm run build:backend",
+    "dev": "npm run prepare:app && electron .",
+    "start": "electron .",
+    "pack": "npm run prepare:app && electron-builder --dir",
+    "dist": "npm run prepare:app && electron-builder",
+    "dist:mac": "npm run prepare:app && electron-builder --mac",
+    "dist:win": "npm run prepare:app && electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.gnoubxl.dmxled",
+    "productName": "DMX LED Controller",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js"
+    ],
+    "extraResources": [
+      {
+        "from": "../backend",
+        "to": "backend",
+        "filter": [
+          "**/*",
+          "!config/bars.json"
+        ]
+      },
+      {
+        "from": "../frontend/dist",
+        "to": "frontend/dist"
+      }
+    ],
+    "mac": {
+      "target": [
+        { "target": "dmg", "arch": ["x64", "arm64"] },
+        { "target": "zip", "arch": ["x64", "arm64"] }
+      ],
+      "category": "public.app-category.utilities"
+    },
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ]
+    },
+    "linux": {
+      "target": ["AppImage"]
+    }
+  }
+}
